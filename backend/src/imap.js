@@ -25,9 +25,58 @@ export async function testConnection(email, password, host, port = 993) {
     logger: false,
     tls: { rejectUnauthorized: false }
   });
-  await client.connect();
-  await client.logout();
-  return true;
+  try {
+    await client.connect();
+    await client.logout();
+    return true;
+  } catch (e) {
+    const msg = String(e.message || '').toLowerCase();
+    const isGmail = host.includes('gmail');
+    const isOutlook = host.includes('outlook') || host.includes('office365');
+    const isYahoo = host.includes('yahoo');
+
+    // كشف أخطاء المصادقة
+    if (
+      msg.includes('invalid credentials') ||
+      msg.includes('authentication failed') ||
+      msg.includes('authenticate') ||
+      msg.includes('login failed') ||
+      msg.includes('username and password') ||
+      msg.includes('[authenticationfailed]') ||
+      msg.includes('command failed') ||
+      msg.includes('no supported')
+    ) {
+      if (isGmail) {
+        throw new Error(
+          'AUTH_FAIL:GMAIL'
+        );
+      }
+      if (isOutlook) {
+        throw new Error(
+          'AUTH_FAIL:OUTLOOK'
+        );
+      }
+      if (isYahoo) {
+        throw new Error(
+          'AUTH_FAIL:YAHOO'
+        );
+      }
+      throw new Error('AUTH_FAIL:GENERIC');
+    }
+
+    // أخطاء الاتصال
+    if (
+      msg.includes('econnrefused') ||
+      msg.includes('enotfound') ||
+      msg.includes('etimedout') ||
+      msg.includes('timeout') ||
+      msg.includes('network')
+    ) {
+      throw new Error('CONN_FAIL');
+    }
+
+    throw e;
+  }
 }
 
 function extractText(msg) {

@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة إدارة Mr10x</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d1a;
+    --surface: #13131f;
+    --surface2: #1a1a2e;
+    --border: rgba(124,58,237,0.18);
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --text: #f1f0fb;
+    --muted: #8b87a8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --pending-bg: rgba(245,158,11,0.1);
+    --pending-border: rgba(245,158,11,0.3);
+    --active-bg: rgba(34,197,94,0.1);
+    --active-border: rgba(34,197,94,0.3);
+    --rejected-bg: rgba(239,68,68,0.1);
+    --rejected-border: rgba(239,68,68,0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    direction: rtl;
+  }
+
+  /* ── Login Screen ── */
+  #login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+  }
+  .login-card .logo {
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .login-card h2 {
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 32px;
+  }
+  .form-group {
+    margin-bottom: 16px;
+    text-align: right;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 7px;
+    font-weight: 500;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 15px;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-success {
+    background: rgba(34,197,94,0.15);
+    color: var(--success);
+    border: 1px solid rgba(34,197,94,0.3);
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+  .btn-success:hover { background: rgba(34,197,94,0.25); }
+  .btn-danger {
+    background: rgba(239,68,68,0.12);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.25);
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+  .btn-danger:hover { background: rgba(239,68,68,0.22); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .error-msg {
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  /* ── Dashboard ── */
+  #dashboard { display: none; }
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-logo {
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .topbar-badge {
+    font-size: 11px;
+    background: rgba(239,68,68,0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-weight: 600;
+  }
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .admin-label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── Stats Bar ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card .num {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-card .lbl {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .stat-pending .num { color: var(--warning); }
+  .stat-active .num { color: var(--success); }
+  .stat-rejected .num { color: var(--danger); }
+  .stat-total .num { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ── Tabs ── */
+  .tabs-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: -1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-btn.active {
+    color: var(--accent2);
+    border-bottom-color: var(--accent2);
+    font-weight: 600;
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+  .tab-badge {
+    font-size: 11px;
+    background: rgba(245,158,11,0.2);
+    color: var(--warning);
+    border-radius: 20px;
+    padding: 1px 7px;
+    font-weight: 700;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Sellers Table ── */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  thead th {
+    padding: 14px 16px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(124,58,237,0.08);
+    transition: background 0.15s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(124,58,237,0.04); }
+  tbody td {
+    padding: 14px 16px;
+    font-size: 14px;
+    vertical-align: middle;
+  }
+
+  /* ── Status Badge ── */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .status-badge.pending {
+    background: var(--pending-bg);
+    border: 1px solid var(--pending-border);
+    color: var(--warning);
+  }
+  .status-badge.active {
+    background: var(--active-bg);
+    border: 1px solid var(--active-border);
+    color: var(--success);
+  }
+  .status-badge.rejected {
+    background: var(--rejected-bg);
+    border: 1px solid var(--rejected-border);
+    color: var(--danger);
+  }
+
+  /* ── Actions ── */
+  .actions-cell {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  /* ── Empty State ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 15px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Loading ── */
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  /* ── WhatsApp link ── */
+  .wa-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #25d366;
+    font-size: 13px;
+    text-decoration: none;
+    padding: 3px 8px;
+    background: rgba(37,211,102,0.08);
+    border-radius: 6px;
+    border: 1px solid rgba(37,211,102,0.2);
+    transition: background 0.15s;
+  }
+  .wa-link:hover { background: rgba(37,211,102,0.15); }
+
+  /* ── Date ── */
+  .date-cell { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  /* ── Search & Filter ── */
+  .table-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .search-box {
+    flex: 1;
+    min-width: 200px;
+    padding: 9px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 14px;
+  }
+  .search-box:focus { outline: none; border-color: var(--accent); }
+  .search-box::placeholder { color: var(--muted); }
+
+  /* ── Confirm dialog ── */
+  .confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 20px;
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+  }
+  .confirm-box .icon { font-size: 40px; margin-bottom: 12px; }
+  .confirm-box h3 { font-size: 18px; margin-bottom: 8px; }
+  .confirm-box p { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+  .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+  @media (max-width: 768px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .topbar { padding: 0 16px; }
+    .tabs-container { padding: 0 16px; }
+    thead { display: none; }
+    tbody tr { display: block; padding: 12px 16px; }
+    tbody td { display: block; padding: 4px 0; }
+    tbody td::before {
+      content: attr(data-label) ': ';
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .actions-cell { margin-top: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── شاشة الدخول ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="logo">Mr10x</div>
+    <h2>لوحة الإدارة</h2>
+    <div class="form-group">
+      <label>كلمة مرور الأدمن</label>
+      <input type="password" id="admin-pass" placeholder="••••••••" dir="ltr"
+        onkeydown="if(event.key==='Enter') adminLogin()">
+    </div>
+    <div id="login-err" class="error-msg"></div>
+    <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:8px" onclick="adminLogin()">
+      دخول
+    </button>
+  </div>
+</div>
+
+<!-- ── لوحة التحكم ── -->
+<div id="dashboard">
+  <nav class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="topbar-logo">Mr10x</span>
+      <span class="topbar-badge" id="pending-topbar-badge" style="display:none">طلبات جديدة</span>
+    </div>
+    <div class="topbar-actions">
+      <span class="admin-label">🔐 لوحة الإدارة</span>
+      <button class="btn btn-ghost" style="padding:7px 14px;font-size:13px" onclick="adminLogout()">خروج</button>
+    </div>
+  </nav>
+
+  <!-- إحصائيات -->
+  <div class="stats-bar">
+    <div class="stat-card stat-pending">
+      <div class="num" id="stat-pending">0</div>
+      <div class="lbl">⏳ قيد المراجعة</div>
+    </div>
+    <div class="stat-card stat-active">
+      <div class="num" id="stat-active">0</div>
+      <div class="lbl">✅ نشط</div>
+    </div>
+    <div class="stat-card stat-rejected">
+      <div class="num" id="stat-rejected">0</div>
+      <div class="lbl">❌ مرفوض</div>
+    </div>
+    <div class="stat-card stat-total">
+      <div class="num" id="stat-total">0</div>
+      <div class="lbl">📊 الإجمالي</div>
+    </div>
+  </div>
+
+  <div class="tabs-container">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('pending', this)">
+        ⏳ طلبات الانتظار
+        <span class="tab-badge" id="pending-count-badge" style="display:none">0</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('active', this)">✅ المتاجر النشطة</button>
+      <button class="tab-btn" onclick="switchTab('rejected', this)">❌ المرفوضة</button>
+      <button class="tab-btn" onclick="switchTab('all', this)">📋 الكل</button>
+    </div>
+
+    <!-- بانيل قيد المراجعة -->
+    <div id="tab-pending" class="tab-panel active">
+      <div class="table-toolbar">
+        <input class="search-box" placeholder="بحث بالاسم أو الإيميل..." oninput="filterTable('pending', this.value)">
+        <button class="btn btn-ghost" onclick="loadSellers()">🔄 تحديث</button>
+      </div>
+      <div id="table-pending"></div>
+    </div>
+
+    <!-- بانيل النشطة -->
+    <div id="tab-active" class="tab-panel">
+      <div class="table-toolbar">
+        <input class="search-box" placeholder="بحث بالاسم أو الإيميل..." oninput="filterTable('active', this.value)">
+        <button class="btn btn-ghost" onclick="loadSellers()">🔄 تحديث</button>
+      </div>
+      <div id="table-active"></div>
+    </div>
+
+    <!-- بانيل المرفوضة -->
+    <div id="tab-rejected" class="tab-panel">
+      <div class="table-toolbar">
+        <input class="search-box" placeholder="بحث بالاسم أو الإيميل..." oninput="filterTable('rejected', this.value)">
+        <button class="btn btn-ghost" onclick="loadSellers()">🔄 تحديث</button>
+      </div>
+      <div id="table-rejected"></div>
+    </div>
+
+    <!-- بانيل الكل -->
+    <div id="tab-all" class="tab-panel">
+      <div class="table-toolbar">
+        <input class="search-box" placeholder="بحث بالاسم أو الإيميل..." oninput="filterTable('all', this.value)">
+        <button class="btn btn-ghost" onclick="loadSellers()">🔄 تحديث</button>
+      </div>
+      <div id="table-all"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── تأكيد الحذف ── -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="icon">🗑️</div>
+    <h3>حذف المتجر</h3>
+    <p id="confirm-msg">هل أنت متأكد من حذف هذا المتجر؟ لا يمكن التراجع عن هذا الإجراء.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">إلغاء</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">حذف</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = window.MR10X_API || 'https://mr10x-otp-production.up.railway.app';
+let ADMIN_PASS = '';
+let allSellers = [];
+let deletePendingId = null;
+let currentTab = 'pending';
+
+function toast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('ar-SA', { year:'numeric', month:'short', day:'numeric' })
+    + ' ' + d.toLocaleTimeString('ar-SA', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ── تسجيل الدخول ──
+async function adminLogin() {
+  const pass = document.getElementById('admin-pass').value;
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+
+  try {
+    const r = await fetch(`${API}/api/admin/sellers`, {
+      headers: { 'x-admin-pass': pass }
+    });
+    if (r.status === 401) {
+      errEl.textContent = 'كلمة المرور غير صحيحة';
+      errEl.style.display = 'block';
+      return;
+    }
+    const data = await r.json();
+    ADMIN_PASS = pass;
+    sessionStorage.setItem('mr10x_admin_pass', pass);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    processData(data);
+  } catch(e) {
+    errEl.textContent = 'تعذر الاتصال بالسيرفر';
+    errEl.style.display = 'block';
+  }
+}
+
+function adminLogout() {
+  ADMIN_PASS = '';
+  sessionStorage.removeItem('mr10x_admin_pass');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-pass').value = '';
+}
+
+// ── جلب البيانات ──
+async function loadSellers() {
+  try {
+    const r = await fetch(`${API}/api/admin/sellers`, {
+      headers: { 'x-admin-pass': ADMIN_PASS }
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    processData(data);
+  } catch(e) {
+    toast('تعذر جلب البيانات');
+  }
+}
+
+function processData(data) {
+  allSellers = data;
+  updateStats();
+  renderAll();
+}
+
+function updateStats() {
+  const pending = allSellers.filter(s => s.status === 'pending').length;
+  const active  = allSellers.filter(s => s.status === 'active').length;
+  const rejected = allSellers.filter(s => s.status === 'rejected').length;
+  document.getElementById('stat-pending').textContent = pending;
+  document.getElementById('stat-active').textContent = active;
+  document.getElementById('stat-rejected').textContent = rejected;
+  document.getElementById('stat-total').textContent = allSellers.length;
+
+  const badge = document.getElementById('pending-count-badge');
+  const topBadge = document.getElementById('pending-topbar-badge');
+  if (pending > 0) {
+    badge.textContent = pending;
+    badge.style.display = 'inline';
+    topBadge.style.display = 'inline';
+  } else {
+    badge.style.display = 'none';
+    topBadge.style.display = 'none';
+  }
+}
+
+function renderAll() {
+  renderTable('pending', allSellers.filter(s => s.status === 'pending'));
+  renderTable('active', allSellers.filter(s => s.status === 'active'));
+  renderTable('rejected', allSellers.filter(s => s.status === 'rejected'));
+  renderTable('all', allSellers);
+}
+
+function filterTable(tab, query) {
+  const q = query.trim().toLowerCase();
+  const data = tab === 'all' ? allSellers
+    : allSellers.filter(s => s.status === tab);
+  const filtered = q ? data.filter(s =>
+    s.name.toLowerCase().includes(q) ||
+    s.email.toLowerCase().includes(q) ||
+    (s.phone || '').includes(q)
+  ) : data;
+  renderTable(tab, filtered);
+}
+
+function renderTable(tab, sellers) {
+  const container = document.getElementById(`table-${tab}`);
+  if (!sellers.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">${tab === 'pending' ? '📭' : tab === 'active' ? '🏪' : '📋'}</div>
+        <p>لا توجد متاجر ${tab === 'pending' ? 'قيد المراجعة' : tab === 'active' ? 'نشطة' : tab === 'rejected' ? 'مرفوضة' : 'بعد'}</p>
+      </div>`;
+    return;
+  }
+
+  const rows = sellers.map(s => {
+    const wa = s.phone ? `<a class="wa-link" href="https://wa.me/966${s.phone.replace(/^0/, '')}" target="_blank" rel="noopener">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      ${escapeHtml(s.phone)}
+    </a>` : '<span style="color:var(--muted);font-size:12px">—</span>';
+
+    const statusLabel = { pending:'قيد المراجعة', active:'نشط', rejected:'مرفوض' }[s.status] || s.status;
+
+    // أزرار الإجراءات حسب الحالة
+    let actions = '';
+    if (s.status === 'pending') {
+      actions += `<button class="btn btn-success" onclick="approveSeller('${s.id}')">✓ قبول</button>`;
+      actions += `<button class="btn btn-danger" onclick="rejectSeller('${s.id}')">✗ رفض</button>`;
+    } else if (s.status === 'active') {
+      actions += `<button class="btn btn-danger" style="font-size:12px" onclick="rejectSeller('${s.id}')">🚫 تعليق</button>`;
+    } else if (s.status === 'rejected') {
+      actions += `<button class="btn btn-success" onclick="approveSeller('${s.id}')">↩ إعادة قبول</button>`;
+    }
+    actions += `<button class="btn btn-ghost" style="color:var(--danger)" onclick="askDelete('${s.id}', '${escapeHtml(s.name)}')">🗑️</button>`;
+
+    return `<tr>
+      <td data-label="الاسم"><strong>${escapeHtml(s.name)}</strong></td>
+      <td data-label="البريد الإلكتروني" dir="ltr" style="font-size:13px">${escapeHtml(s.email)}</td>
+      <td data-label="واتساب">${wa}</td>
+      <td data-label="الحالة"><span class="status-badge ${s.status}">${statusLabel}</span></td>
+      <td data-label="تاريخ التسجيل" class="date-cell">${formatDate(s.created_at)}</td>
+      <td data-label="الإجراءات"><div class="actions-cell">${actions}</div></td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>البريد الإلكتروني</th>
+            <th>واتساب</th>
+            <th>الحالة</th>
+            <th>تاريخ التسجيل</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── Tabs ──
+function switchTab(name, el) {
+  currentTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ── الإجراءات ──
+async function approveSeller(id) {
+  try {
+    await fetch(`${API}/api/admin/sellers/${id}/approve`, {
+      method: 'PATCH',
+      headers: { 'x-admin-pass': ADMIN_PASS }
+    });
+    toast('✅ تم قبول المتجر بنجاح');
+    await loadSellers();
+  } catch(e) { toast('حدث خطأ'); }
+}
+
+async function rejectSeller(id) {
+  try {
+    await fetch(`${API}/api/admin/sellers/${id}/reject`, {
+      method: 'PATCH',
+      headers: { 'x-admin-pass': ADMIN_PASS }
+    });
+    toast('🚫 تم رفض/تعليق المتجر');
+    await loadSellers();
+  } catch(e) { toast('حدث خطأ'); }
+}
+
+function askDelete(id, name) {
+  deletePendingId = id;
+  document.getElementById('confirm-msg').textContent = `هل أنت متأكد من حذف متجر "${name}"؟ سيتم حذف جميع بياناته نهائياً.`;
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function closeConfirm() {
+  deletePendingId = null;
+  document.getElementById('confirm-overlay').classList.remove('open');
+}
+
+async function confirmDelete() {
+  if (!deletePendingId) return;
+  const id = deletePendingId;
+  closeConfirm();
+  try {
+    await fetch(`${API}/api/admin/sellers/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-pass': ADMIN_PASS }
+    });
+    toast('🗑️ تم حذف المتجر');
+    await loadSellers();
+  } catch(e) { toast('حدث خطأ'); }
+}
+
+// ── تحقق تلقائي من الجلسة ──
+(function init() {
+  const saved = sessionStorage.getItem('mr10x_admin_pass');
+  if (saved) {
+    document.getElementById('admin-pass').value = saved;
+    adminLogin();
+  }
+})();
+
+// ── تحديث تلقائي كل 30 ثانية ──
+setInterval(() => {
+  if (ADMIN_PASS) loadSellers();
+}, 30000);
+</script>
+</body>
+</html>

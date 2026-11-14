@@ -29,20 +29,31 @@ function authMiddleware(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   const seller = db.prepare('SELECT * FROM sellers WHERE id = ?').get(token);
   if (!seller) return res.status(401).json({ error: 'Invalid token' });
+  if (seller.status === 'pending') return res.status(403).json({ error: 'pending' });
+  if (seller.status === 'rejected') return res.status(403).json({ error: 'rejected' });
   req.seller = seller;
+  next();
+}
+
+// ─── Admin Auth ───────────────────────────────────────────────────────────────
+const ADMIN_PASS = process.env.ADMIN_PASS || 'mr10x-admin-2024';
+
+function adminMiddleware(req, res, next) {
+  const pass = req.headers['x-admin-pass'] || req.query.pass;
+  if (pass !== ADMIN_PASS) return res.status(401).json({ error: 'Unauthorized' });
   next();
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 app.post('/api/register', (req, res) => {
-  const { name, email, password } = req.body || {};
+  const { name, email, password, phone } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(email.toLowerCase());
   if (existing) return res.status(409).json({ error: 'Email already registered' });
   const id = randomUUID();
-  db.prepare('INSERT INTO sellers (id, name, email, password) VALUES (?, ?, ?, ?)')
-    .run(id, name, email.toLowerCase(), hashPw(password));
-  res.json({ token: id, name });
+  db.prepare('INSERT INTO sellers (id, name, email, password, phone, status) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(id, name, email.toLowerCase(), hashPw(password), phone || '', 'pending');
+  res.json({ pending: true });
 });
 
 app.post('/api/login', (req, res) => {
@@ -50,7 +61,34 @@ app.post('/api/login', (req, res) => {
   const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
   if (!seller || seller.password !== hashPw(password))
     return res.status(401).json({ error: 'Invalid credentials' });
+  if (seller.status === 'pending')
+    return res.status(403).json({ error: 'pending', message: 'حسابك قيد المراجعة، سنتواصل معك على الواتساب قريباً.' });
   res.json({ token: seller.id, name: seller.name });
+});
+
+// ─── Admin API ────────────────────────────────────────────────────────────────
+// GET /api/admin/sellers — قائمة البائعين
+app.get('/api/admin/sellers', adminMiddleware, (req, res) => {
+  const sellers = db.prepare('SELECT id, name, email, phone, status, created_at FROM sellers ORDER BY created_at DESC').all();
+  res.json(sellers);
+});
+
+// PATCH /api/admin/sellers/:id/approve — قبول بائع
+app.patch('/api/admin/sellers/:id/approve', adminMiddleware, (req, res) => {
+  db.prepare('UPDATE sellers SET status = ? WHERE id = ?').run('active', req.params.id);
+  res.json({ ok: true });
+});
+
+// PATCH /api/admin/sellers/:id/reject — رفض / تعليق بائع
+app.patch('/api/admin/sellers/:id/reject', adminMiddleware, (req, res) => {
+  db.prepare('UPDATE sellers SET status = ? WHERE id = ?').run('rejected', req.params.id);
+  res.json({ ok: true });
+});
+
+// DELETE /api/admin/sellers/:id — حذف بائع
+app.delete('/api/admin/sellers/:id', adminMiddleware, (req, res) => {
+  db.prepare('DELETE FROM sellers WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
 });
 
 // ─── Mailboxes ─────────────────────────────────────────────────────────────────
@@ -68,7 +106,22 @@ app.post('/api/mailboxes', authMiddleware, async (req, res) => {
   try {
     await testConnection(email, password, imapHost, imapPort);
   } catch (e) {
-    return res.status(400).json({ error: `Connection failed: ${e.message}` });
+    const msg = e.message;
+    let arabicError;
+    if (msg === 'AUTH_FAIL:GMAIL') {
+      arabicError = 'فشل تسجيل الدخول — Gmail يطلب App Password (كلمة مرور التطبيقات) وليس كلمة مرورك العادية. اذهب إلى myaccount.google.com/apppasswords وأنشئ كلمة مرور جديدة واستخدمها هنا.';
+    } else if (msg === 'AUTH_FAIL:OUTLOOK') {
+      arabicError = 'فشل تسجيل الدخول — تأكد من تفعيل IMAP في إعدادات Outlook، وأنك تستخدم كلمة المرور الصحيحة.';
+    } else if (msg === 'AUTH_FAIL:YAHOO') {
+      arabicError = 'فشل تسجيل الدخول — Yahoo يطلب App Password. اذهب إلى إعدادات الحساب في Yahoo وأنشئ كلمة مرور للتطبيقات.';
+    } else if (msg === 'AUTH_FAIL:GENERIC') {
+      arabicError = 'كلمة المرور أو الإيميل غير صحيحة. تأكد من بيانات الدخول.';
+    } else if (msg === 'CONN_FAIL') {
+      arabicError = 'تعذّر الاتصال بالسيرفر — تأكد من صحة عنوان IMAP والـ Port.';
+    } else {
+      arabicError = `فشل الاتصال: ${msg}`;
+    }
+    return res.status(400).json({ error: arabicError });
   }
   const id = randomUUID();
   db.prepare(`INSERT INTO mailboxes (id, seller_id, email, imap_host, imap_port, password, label)

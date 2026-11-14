@@ -17,6 +17,8 @@ db.exec(`
     name        TEXT NOT NULL,
     email       TEXT UNIQUE NOT NULL,
     password    TEXT NOT NULL,
+    phone       TEXT DEFAULT '',
+    status      TEXT DEFAULT 'pending',
     created_at  INTEGER DEFAULT (unixepoch())
   );
 
@@ -57,12 +59,10 @@ db.exec(`
   );
 `);
 
-// Migration: إضافة حقول الحساب للسلوتات القديمة
-try {
-  db.exec(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`);
-} catch {}
-try {
-  db.exec(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`);
-} catch {}
+// Migrations: إضافة حقول جديدة للجداول القديمة
+try { db.exec(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE sellers ADD COLUMN phone TEXT DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE sellers ADD COLUMN status TEXT DEFAULT 'pending'`); } catch {}
 
 export default db;
