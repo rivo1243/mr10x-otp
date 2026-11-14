@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mr10x — كود التحقق</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  /* ── Glow bg ── */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 440px;
+    text-align: center;
+  }
+
+  .logo {
+    font-size: 20px; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 32px;
+    display: inline-block;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .service-label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── State: waiting ── */
+  #state-waiting { display: none; }
+  .pulse-ring {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: rgba(124,58,237,0.15);
+    border: 2px solid var(--accent);
+    margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .pulse-ring svg { color: var(--accent2); }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.7; }
+  }
+  #state-waiting h2 { font-size: 20px; margin-bottom: 8px; }
+  #state-waiting p { color: var(--muted); font-size: 14px; }
+  .dots span {
+    display: inline-block;
+    animation: dot 1.4s infinite;
+    font-size: 20px; line-height: 1;
+  }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dot { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+  /* ── State: ready ── */
+  #state-ready { display: none; }
+  .check-icon {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: rgba(16,185,129,0.15);
+    border: 2px solid var(--green);
+    margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+    animation: pop 0.4s cubic-bezier(0.17,0.89,0.32,1.28);
+  }
+  @keyframes pop {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  #state-ready h2 { font-size: 16px; color: var(--muted); margin-bottom: 20px; }
+
+  /* ── Code display ── */
+  .code-box {
+    background: rgba(124,58,237,0.08);
+    border: 2px solid rgba(124,58,237,0.4);
+    border-radius: 14px;
+    padding: 20px;
+    margin: 0 auto 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .code-box:hover {
+    border-color: var(--accent2);
+    background: rgba(124,58,237,0.14);
+    transform: scale(1.02);
+  }
+  .code-box:active { transform: scale(0.98); }
+  .code-value {
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: 8px;
+    font-family: 'Courier New', monospace;
+    background: linear-gradient(135deg, #fff, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: block;
+  }
+  .copy-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  /* ── Countdown ── */
+  .countdown-row {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 20px;
+  }
+  .countdown-label { font-size: 12px; color: var(--muted); }
+  .countdown-bar {
+    flex: 1; height: 4px;
+    background: var(--border);
+    border-radius: 4px; overflow: hidden;
+  }
+  .countdown-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    transition: width 1s linear, background-color 0.5s;
+  }
+  .countdown-num {
+    font-size: 13px; font-weight: 700; min-width: 36px;
+    color: var(--accent2);
+  }
+  .countdown-num.warn { color: var(--yellow); }
+  .countdown-num.danger { color: var(--red); }
+
+  .btn-copy {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
+  }
+  .btn-copy:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-copy.copied { background: var(--green); }
+
+  /* ── State: expired ── */
+  #state-expired { display: none; }
+  .x-icon {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: rgba(239,68,68,0.1);
+    border: 2px solid var(--red);
+    margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #state-expired h2 { font-size: 20px; margin-bottom: 8px; }
+  #state-expired p { color: var(--muted); font-size: 14px; }
+
+  /* ── State: invalid ── */
+  #state-invalid { display: none; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--green); color: #fff;
+    padding: 12px 24px; border-radius: 10px;
+    font-size: 15px; font-weight: 700;
+    opacity: 0; transition: all 0.3s;
+    z-index: 999; white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  .footer {
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .footer span {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="logo">Mr10x</div>
+
+  <div class="card">
+    <div class="service-label" id="service-label">كود التحقق</div>
+
+    <!-- Waiting -->
+    <div id="state-waiting">
+      <div class="pulse-ring">
+        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <h2>بنستنى الكود<span class="dots"><span>.</span><span>.</span><span>.</span></span></h2>
+      <p>ما وصل الكود بعد. الصفحة تتحدث تلقائياً كل ثانية.</p>
+    </div>
+
+    <!-- Ready -->
+    <div id="state-ready">
+      <div class="check-icon">
+        <svg width="28" height="28" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+      </div>
+      <h2>كودك جاهز! 🎉</h2>
+
+      <div class="code-box" onclick="copyCode()">
+        <span class="code-value" id="code-value">------</span>
+        <div class="copy-hint">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          اضغط للنسخ
+        </div>
+      </div>
+
+      <div class="countdown-row">
+        <span class="countdown-label">ينتهي خلال</span>
+        <div class="countdown-bar"><div class="countdown-fill" id="countdown-fill"></div></div>
+        <span class="countdown-num" id="countdown-num">10:00</span>
+      </div>
+
+      <button class="btn-copy" id="copy-btn" onclick="copyCode()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        نسخ الكود
+      </button>
+    </div>
+
+    <!-- Expired -->
+    <div id="state-expired">
+      <div class="x-icon">
+        <svg width="28" height="28" fill="none" stroke="var(--red)" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </div>
+      <h2>انتهت صلاحية الكود</h2>
+      <p>الكود انتهى وقته. اطلب كوداً جديداً من المنصة.</p>
+    </div>
+
+    <!-- Invalid -->
+    <div id="state-invalid">
+      <div class="x-icon">
+        <svg width="28" height="28" fill="none" stroke="var(--red)" stroke-width="2.5" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+        </svg>
+      </div>
+      <h2>رابط غير صحيح</h2>
+      <p>هذا الرابط غير صالح أو منتهي. تواصل مع المتجر لرابط جديد.</p>
+    </div>
+  </div>
+
+  <div class="footer">مشغّل بواسطة <span>Mr10x</span></div>
+</div>
+
+<div id="toast">تم نسخ الكود ✓</div>
+
+<script>
+const API = window.MR10X_API || 'http://localhost:4000';
+
+const params = new URLSearchParams(location.search);
+const TOKEN = params.get('t');
+
+let currentCode = '';
+let countdownInterval = null;
+let pollInterval = null;
+let expiresAt = 0;
+
+function show(state) {
+  ['waiting','ready','expired','invalid'].forEach(s => {
+    document.getElementById('state-' + s).style.display = s === state ? 'block' : 'none';
+  });
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function copyCode() {
+  if (!currentCode) return;
+  navigator.clipboard.writeText(currentCode).then(() => {
+    toast('تم نسخ الكود: ' + currentCode + ' ✓');
+    const btn = document.getElementById('copy-btn');
+    btn.classList.add('copied');
+    btn.textContent = '✓ تم النسخ!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> نسخ الكود`;
+    }, 2500);
+  });
+}
+
+function startCountdown(seconds) {
+  if (countdownInterval) clearInterval(countdownInterval);
+  const total = 600; // 10 minutes max
+  expiresAt = Date.now() + seconds * 1000;
+
+  function tick() {
+    const remaining = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
+    const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+    const secs = String(remaining % 60).padStart(2, '0');
+
+    const numEl = document.getElementById('countdown-num');
+    const fillEl = document.getElementById('countdown-fill');
+
+    numEl.textContent = `${mins}:${secs}`;
+    const pct = Math.max(0, (remaining / total) * 100);
+    fillEl.style.width = pct + '%';
+
+    if (remaining <= 30) {
+      numEl.className = 'countdown-num danger';
+      fillEl.style.background = 'var(--red)';
+    } else if (remaining <= 90) {
+      numEl.className = 'countdown-num warn';
+      fillEl.style.background = 'var(--yellow)';
+    }
+
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+      if (pollInterval) clearInterval(pollInterval);
+      show('expired');
+    }
+  }
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
+async function fetchCode() {
+  if (!TOKEN) { show('invalid'); return; }
+
+  try {
+    const r = await fetch(`${API}/api/code/${TOKEN}`);
+    if (r.status === 404) { show('invalid'); if (pollInterval) clearInterval(pollInterval); return; }
+    const data = await r.json();
+
+    if (data.label) {
+      document.getElementById('service-label').textContent = data.label;
+      document.title = `Mr10x — ${data.label}`;
+    }
+
+    if (data.status === 'ready') {
+      currentCode = data.code;
+      document.getElementById('code-value').textContent = data.code;
+      show('ready');
+      startCountdown(data.expires_in || 600);
+      if (pollInterval) clearInterval(pollInterval);
+    } else {
+      show('waiting');
+    }
+  } catch(e) {
+    // شبكة، يحاول مجدداً
+  }
+}
+
+if (!TOKEN) {
+  show('invalid');
+} else {
+  fetchCode();
+  pollInterval = setInterval(fetchCode, 3000);
+}
+</script>
+</body>
+</html>
