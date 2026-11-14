@@ -86,6 +86,7 @@ app.delete('/api/mailboxes/:id', authMiddleware, (req, res) => {
 app.get('/api/slots', authMiddleware, (req, res) => {
   const rows = db.prepare(`
     SELECT s.id, s.label, s.token, s.mailbox_id, s.created_at,
+           s.account_email,
            m.email as mailbox_email,
            (SELECT code FROM codes WHERE slot_id = s.id ORDER BY received_at DESC LIMIT 1) as latest_code
     FROM slots s JOIN mailboxes m ON m.id = s.mailbox_id
@@ -95,7 +96,7 @@ app.get('/api/slots', authMiddleware, (req, res) => {
 });
 
 app.post('/api/slots', authMiddleware, (req, res) => {
-  const { mailbox_id, label, count = 1 } = req.body || {};
+  const { mailbox_id, label, count = 1, account_email = '', account_password = '' } = req.body || {};
   if (!mailbox_id || !label) return res.status(400).json({ error: 'mailbox_id and label required' });
   const mailbox = db.prepare('SELECT id FROM mailboxes WHERE id = ? AND seller_id = ?').get(mailbox_id, req.seller.id);
   if (!mailbox) return res.status(404).json({ error: 'Mailbox not found' });
@@ -105,11 +106,24 @@ app.post('/api/slots', authMiddleware, (req, res) => {
   for (let i = 0; i < n; i++) {
     const id = randomUUID();
     const token = randomUUID().replace(/-/g, '');
-    db.prepare('INSERT INTO slots (id, seller_id, mailbox_id, label, token) VALUES (?, ?, ?, ?, ?)')
-      .run(id, req.seller.id, mailbox_id, label, token);
-    created.push({ id, token, label });
+    db.prepare('INSERT INTO slots (id, seller_id, mailbox_id, label, token, account_email, account_password) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(id, req.seller.id, mailbox_id, label, token, account_email, account_password);
+    created.push({ id, token, label, account_email });
   }
   res.json(created);
+});
+
+app.patch('/api/slots/:id', authMiddleware, (req, res) => {
+  const { account_email, account_password, label } = req.body || {};
+  const slot = db.prepare('SELECT id FROM slots WHERE id = ? AND seller_id = ?').get(req.params.id, req.seller.id);
+  if (!slot) return res.status(404).json({ error: 'Slot not found' });
+  if (account_email !== undefined)
+    db.prepare('UPDATE slots SET account_email = ? WHERE id = ?').run(account_email, req.params.id);
+  if (account_password !== undefined)
+    db.prepare('UPDATE slots SET account_password = ? WHERE id = ?').run(account_password, req.params.id);
+  if (label !== undefined)
+    db.prepare('UPDATE slots SET label = ? WHERE id = ?').run(label, req.params.id);
+  res.json({ ok: true });
 });
 
 app.delete('/api/slots/:id', authMiddleware, (req, res) => {
@@ -118,6 +132,18 @@ app.delete('/api/slots/:id', authMiddleware, (req, res) => {
 });
 
 // ─── Customer endpoint (public) ───────────────────────────────────────────────
+// GET /api/slot/:token — بيانات السلوت (الإيميل + الباسورد + الحالة)
+app.get('/api/slot/:token', (req, res) => {
+  const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
+  if (!slot) return res.status(404).json({ error: 'Invalid link' });
+  res.json({
+    label: slot.label,
+    account_email: slot.account_email || '',
+    account_password: slot.account_password || ''
+  });
+});
+
+// GET /api/code/:token — جلب آخر كود (عند الضغط على الزر)
 app.get('/api/code/:token', (req, res) => {
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
@@ -142,7 +168,7 @@ app.get('/api/code/:token', (req, res) => {
 });
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
-setInterval(() => pollAll(), 15_000); // كل 15 ثانية
+setInterval(() => pollAll(), 10_000); // كل 10 ثواني
 pollAll(); // تشغيل فوري عند البدء
 
 app.listen(PORT, () => {

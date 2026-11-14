@@ -35,12 +35,14 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS slots (
-    id          TEXT PRIMARY KEY,
-    seller_id   TEXT NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
-    mailbox_id  TEXT NOT NULL REFERENCES mailboxes(id) ON DELETE CASCADE,
-    label       TEXT NOT NULL,
-    token       TEXT UNIQUE NOT NULL,
-    created_at  INTEGER DEFAULT (unixepoch())
+    id               TEXT PRIMARY KEY,
+    seller_id        TEXT NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+    mailbox_id       TEXT NOT NULL REFERENCES mailboxes(id) ON DELETE CASCADE,
+    label            TEXT NOT NULL,
+    token            TEXT UNIQUE NOT NULL,
+    account_email    TEXT DEFAULT '',
+    account_password TEXT DEFAULT '',
+    created_at       INTEGER DEFAULT (unixepoch())
   );
 
   CREATE TABLE IF NOT EXISTS codes (
@@ -54,5 +56,13 @@ db.exec(`
     viewed      INTEGER DEFAULT 0
   );
 `);
+
+// Migration: إضافة حقول الحساب للسلوتات القديمة
+try {
+  db.exec(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`);
+} catch {}
+try {
+  db.exec(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`);
+} catch {}
 
 export default db;

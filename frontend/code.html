@@ -7,8 +7,9 @@
 <style>
   :root {
     --bg: #0a0a0f;
-    --card: #1a1a24;
-    --border: #2a2a3a;
+    --card: #13131c;
+    --card2: #1a1a26;
+    --border: #252535;
     --accent: #7c3aed;
     --accent2: #a855f7;
     --green: #10b981;
@@ -37,186 +38,327 @@
     top: -20%;
     left: 50%;
     transform: translateX(-50%);
-    width: 600px;
-    height: 400px;
-    background: radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, transparent 70%);
+    width: 700px;
+    height: 500px;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
 
   .wrap {
     position: relative; z-index: 1;
-    width: 100%; max-width: 440px;
+    width: 100%; max-width: 460px;
     text-align: center;
   }
 
   .logo {
-    font-size: 20px; font-weight: 800;
+    font-size: 22px; font-weight: 900;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
     display: inline-block;
+    letter-spacing: -0.5px;
   }
 
   /* ── Card ── */
   .card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 36px 32px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    border-radius: 24px;
+    padding: 32px 28px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
   }
 
-  .service-label {
-    font-size: 13px;
-    color: var(--muted);
+  .service-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(124,58,237,0.12);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px;
+    color: var(--accent2);
     margin-bottom: 24px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .service-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Credentials box ── */
+  .creds-box {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+    text-align: right;
+  }
+  .creds-title {
+    font-size: 11px;
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 1px;
+    margin-bottom: 14px;
+    font-weight: 600;
   }
-
-  /* ── State: waiting ── */
-  #state-waiting { display: none; }
-  .pulse-ring {
-    width: 72px; height: 72px;
-    border-radius: 50%;
+  .cred-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .cred-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .cred-row:first-of-type { padding-top: 0; }
+  .cred-label {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 70px;
+    font-weight: 500;
+  }
+  .cred-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    flex: 1;
+    text-align: left;
+    direction: ltr;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cred-value.password { letter-spacing: 2px; }
+  .btn-copy-cred {
     background: rgba(124,58,237,0.15);
-    border: 2px solid var(--accent);
-    margin: 0 auto 20px;
-    display: flex; align-items: center; justify-content: center;
-    animation: pulse 2s ease-in-out infinite;
+    border: 1px solid rgba(124,58,237,0.3);
+    color: var(--accent2);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
   }
-  .pulse-ring svg { color: var(--accent2); }
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.08); opacity: 0.7; }
-  }
-  #state-waiting h2 { font-size: 20px; margin-bottom: 8px; }
-  #state-waiting p { color: var(--muted); font-size: 14px; }
-  .dots span {
-    display: inline-block;
-    animation: dot 1.4s infinite;
-    font-size: 20px; line-height: 1;
-  }
-  .dots span:nth-child(2) { animation-delay: 0.2s; }
-  .dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes dot { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+  .btn-copy-cred:hover { background: rgba(124,58,237,0.25); }
+  .btn-copy-cred.done { background: rgba(16,185,129,0.15); border-color: var(--green); color: var(--green); }
 
-  /* ── State: ready ── */
-  #state-ready { display: none; }
-  .check-icon {
-    width: 60px; height: 60px;
+  .show-pass-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 12px;
+    transition: color 0.2s;
+  }
+  .show-pass-btn:hover { color: var(--text); }
+
+  /* ── Main action button ── */
+  .btn-get {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; border: none; border-radius: 14px;
+    font-size: 16px; font-weight: 800; cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-get:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,58,237,0.4); }
+  .btn-get:active:not(:disabled) { transform: translateY(0); }
+  .btn-get:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-get.cooldown { background: linear-gradient(135deg, #374151, #4b5563); }
+
+  /* ── Countdown ── */
+  .cooldown-bar-wrap {
+    margin-top: 12px;
+    display: none;
+  }
+  .cooldown-bar-wrap.show { display: block; }
+  .cooldown-bar-bg {
+    height: 3px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .cooldown-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width 1s linear;
+  }
+  .cooldown-text {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  /* ── Countdown overlay (5s warning) ── */
+  #overlay-countdown {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+    backdrop-filter: blur(4px);
+  }
+  #overlay-countdown.show { display: flex; }
+  .overlay-ring {
+    width: 120px; height: 120px;
     border-radius: 50%;
-    background: rgba(16,185,129,0.15);
-    border: 2px solid var(--green);
-    margin: 0 auto 16px;
+    border: 3px solid var(--border);
+    position: relative;
     display: flex; align-items: center; justify-content: center;
-    animation: pop 0.4s cubic-bezier(0.17,0.89,0.32,1.28);
   }
-  @keyframes pop {
-    0% { transform: scale(0); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
+  .overlay-ring svg.progress-ring {
+    position: absolute;
+    top: -3px; left: -3px;
+    transform: rotate(-90deg);
   }
-  #state-ready h2 { font-size: 16px; color: var(--muted); margin-bottom: 20px; }
+  .overlay-ring svg.progress-ring circle {
+    fill: none;
+    stroke: var(--accent2);
+    stroke-width: 3;
+    stroke-dasharray: 376.99;
+    stroke-dashoffset: 376.99;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear;
+  }
+  .overlay-num {
+    font-size: 48px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    position: relative; z-index: 1;
+  }
+  .overlay-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .overlay-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
 
   /* ── Code display ── */
-  .code-box {
-    background: rgba(124,58,237,0.08);
-    border: 2px solid rgba(124,58,237,0.4);
-    border-radius: 14px;
-    padding: 20px;
-    margin: 0 auto 20px;
+  #code-panel { display: none; }
+  #code-panel.show { display: block; }
+
+  .code-card {
+    background: rgba(124,58,237,0.07);
+    border: 2px solid rgba(124,58,237,0.35);
+    border-radius: 18px;
+    padding: 24px 20px;
+    margin-bottom: 20px;
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
   }
-  .code-box:hover {
-    border-color: var(--accent2);
-    background: rgba(124,58,237,0.14);
-    transform: scale(1.02);
-  }
-  .code-box:active { transform: scale(0.98); }
+  .code-card:hover { border-color: var(--accent2); background: rgba(124,58,237,0.12); transform: scale(1.015); }
+  .code-card:active { transform: scale(0.985); }
+
+  .code-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600; }
   .code-value {
-    font-size: 44px;
+    font-size: 48px;
     font-weight: 900;
-    letter-spacing: 8px;
+    letter-spacing: 10px;
     font-family: 'Courier New', monospace;
     background: linear-gradient(135deg, #fff, var(--accent2));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     display: block;
+    line-height: 1;
   }
   .copy-hint {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    font-size: 11px; color: var(--muted); margin-top: 10px;
   }
 
-  /* ── Countdown ── */
-  .countdown-row {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    margin-bottom: 20px;
+  /* ── Code timer bar ── */
+  .code-timer {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
   }
-  .countdown-label { font-size: 12px; color: var(--muted); }
-  .countdown-bar {
-    flex: 1; height: 4px;
-    background: var(--border);
-    border-radius: 4px; overflow: hidden;
+  .code-timer-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .code-timer-bar {
+    flex: 1; height: 5px;
+    background: var(--border); border-radius: 5px; overflow: hidden;
   }
-  .countdown-fill {
+  .code-timer-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 4px;
-    transition: width 1s linear, background-color 0.5s;
+    border-radius: 5px;
+    transition: width 1s linear;
   }
-  .countdown-num {
-    font-size: 13px; font-weight: 700; min-width: 36px;
+  .code-timer-num {
+    font-size: 13px; font-weight: 800; min-width: 32px;
     color: var(--accent2);
   }
-  .countdown-num.warn { color: var(--yellow); }
-  .countdown-num.danger { color: var(--red); }
+  .code-timer-num.warn { color: var(--yellow); }
+  .code-timer-num.danger { color: var(--red); }
 
-  .btn-copy {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 32px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff; border: none; border-radius: 10px;
-    font-size: 15px; font-weight: 700; cursor: pointer;
-    transition: all 0.2s;
+  .btn-copy-code {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%;
-    justify-content: center;
+    padding: 13px;
+    background: linear-gradient(135deg, var(--green), #059669);
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 800; cursor: pointer;
+    transition: all 0.2s;
   }
-  .btn-copy:hover { opacity: 0.9; transform: translateY(-1px); }
-  .btn-copy.copied { background: var(--green); }
+  .btn-copy-code:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-copy-code.done { background: linear-gradient(135deg, #059669, #047857); }
 
-  /* ── State: expired ── */
-  #state-expired { display: none; }
-  .x-icon {
-    width: 60px; height: 60px;
-    border-radius: 50%;
-    background: rgba(239,68,68,0.1);
-    border: 2px solid var(--red);
+  /* ── No code ── */
+  #no-code-msg {
+    display: none;
+    padding: 20px;
+    background: rgba(239,68,68,0.07);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 14px;
+    margin-bottom: 20px;
+  }
+  #no-code-msg.show { display: block; }
+  #no-code-msg p { color: var(--muted); font-size: 13px; }
+  #no-code-msg strong { color: var(--red); display: block; font-size: 15px; margin-bottom: 6px; }
+
+  /* ── Invalid ── */
+  #state-invalid { display: none; }
+  #state-invalid.show { display: block; }
+  .invalid-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(239,68,68,0.1); border: 2px solid var(--red);
     margin: 0 auto 16px;
     display: flex; align-items: center; justify-content: center;
   }
-  #state-expired h2 { font-size: 20px; margin-bottom: 8px; }
-  #state-expired p { color: var(--muted); font-size: 14px; }
-
-  /* ── State: invalid ── */
-  #state-invalid { display: none; }
 
   /* ── Toast ── */
   #toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
     background: var(--green); color: #fff;
-    padding: 12px 24px; border-radius: 10px;
+    padding: 12px 24px; border-radius: 12px;
     font-size: 15px; font-weight: 700;
     opacity: 0; transition: all 0.3s;
     z-index: 999; white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(16,185,129,0.3);
   }
   #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
@@ -234,33 +376,64 @@
 </head>
 <body>
 
+<!-- Overlay countdown (5s) -->
+<div id="overlay-countdown">
+  <div class="overlay-ring">
+    <svg class="progress-ring" width="126" height="126">
+      <circle cx="63" cy="63" r="60" id="ring-circle"/>
+    </svg>
+    <span class="overlay-num" id="overlay-num">5</span>
+  </div>
+  <div class="overlay-text">⚡ الكود راح يظهر الحين!</div>
+  <div class="overlay-sub">تأكد إنك في صفحة إدخال الكود</div>
+</div>
+
 <div class="wrap">
   <div class="logo">Mr10x</div>
 
-  <div class="card">
-    <div class="service-label" id="service-label">كود التحقق</div>
+  <div class="card" id="main-card">
+    <div class="service-badge" id="service-badge">كود التحقق</div>
 
-    <!-- Waiting -->
-    <div id="state-waiting">
-      <div class="pulse-ring">
-        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
+    <!-- Credentials -->
+    <div class="creds-box" id="creds-box">
+      <div class="creds-title">بيانات الحساب</div>
+      <div class="cred-row">
+        <span class="cred-label">الإيميل</span>
+        <span class="cred-value" id="cred-email">—</span>
+        <button class="btn-copy-cred" onclick="copyCred('email')">نسخ</button>
       </div>
-      <h2>بنستنى الكود<span class="dots"><span>.</span><span>.</span><span>.</span></span></h2>
-      <p>ما وصل الكود بعد. الصفحة تتحدث تلقائياً كل ثانية.</p>
+      <div class="cred-row">
+        <span class="cred-label">الباسورد</span>
+        <span class="cred-value password" id="cred-pass">••••••••</span>
+        <button class="show-pass-btn" id="show-pass-btn" onclick="togglePass()">👁</button>
+        <button class="btn-copy-cred" onclick="copyCred('pass')">نسخ</button>
+      </div>
     </div>
 
-    <!-- Ready -->
-    <div id="state-ready">
-      <div class="check-icon">
-        <svg width="28" height="28" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24">
-          <path d="M20 6L9 17l-5-5"/>
-        </svg>
-      </div>
-      <h2>كودك جاهز! 🎉</h2>
+    <!-- Main get-code button -->
+    <button class="btn-get" id="btn-get" onclick="requestCode()">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      استلام الكود
+    </button>
 
-      <div class="code-box" onclick="copyCode()">
+    <!-- Cooldown bar -->
+    <div class="cooldown-bar-wrap" id="cooldown-wrap">
+      <div class="cooldown-bar-bg"><div class="cooldown-bar-fill" id="cooldown-fill"></div></div>
+      <div class="cooldown-text" id="cooldown-text">انتظر <span id="cooldown-num">20</span> ثانية للطلب التالي</div>
+    </div>
+
+    <!-- No code msg -->
+    <div id="no-code-msg">
+      <strong>⏳ ما وصل الكود بعد</strong>
+      <p>اطلب الكود من المنصة أولاً، بعدين اضغط "استلام الكود" مجدداً.</p>
+    </div>
+
+    <!-- Code panel -->
+    <div id="code-panel">
+      <div class="code-card" onclick="copyCurrentCode()">
+        <div class="code-label">كود التحقق</div>
         <span class="code-value" id="code-value">------</span>
         <div class="copy-hint">
           <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -268,152 +441,258 @@
         </div>
       </div>
 
-      <div class="countdown-row">
-        <span class="countdown-label">ينتهي خلال</span>
-        <div class="countdown-bar"><div class="countdown-fill" id="countdown-fill"></div></div>
-        <span class="countdown-num" id="countdown-num">10:00</span>
+      <div class="code-timer">
+        <span class="code-timer-label">ينتهي خلال</span>
+        <div class="code-timer-bar"><div class="code-timer-fill" id="code-timer-fill"></div></div>
+        <span class="code-timer-num" id="code-timer-num">0:45</span>
       </div>
 
-      <button class="btn-copy" id="copy-btn" onclick="copyCode()">
+      <button class="btn-copy-code" id="btn-copy-code" onclick="copyCurrentCode()">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         نسخ الكود
       </button>
     </div>
 
-    <!-- Expired -->
-    <div id="state-expired">
-      <div class="x-icon">
-        <svg width="28" height="28" fill="none" stroke="var(--red)" stroke-width="2.5" viewBox="0 0 24 24">
-          <path d="M18 6L6 18M6 6l12 12"/>
-        </svg>
-      </div>
-      <h2>انتهت صلاحية الكود</h2>
-      <p>الكود انتهى وقته. اطلب كوداً جديداً من المنصة.</p>
-    </div>
-
     <!-- Invalid -->
     <div id="state-invalid">
-      <div class="x-icon">
+      <div class="invalid-icon">
         <svg width="28" height="28" fill="none" stroke="var(--red)" stroke-width="2.5" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
         </svg>
       </div>
-      <h2>رابط غير صحيح</h2>
-      <p>هذا الرابط غير صالح أو منتهي. تواصل مع المتجر لرابط جديد.</p>
+      <h2 style="font-size:18px;margin-bottom:8px;">رابط غير صحيح</h2>
+      <p style="color:var(--muted);font-size:14px;">هذا الرابط غير صالح. تواصل مع المتجر.</p>
     </div>
   </div>
 
   <div class="footer">مشغّل بواسطة <span>Mr10x</span></div>
 </div>
 
-<div id="toast">تم نسخ الكود ✓</div>
+<div id="toast">تم النسخ ✓</div>
 
 <script>
 const API = window.MR10X_API || 'https://mr10x-otp-production.up.railway.app';
-
 const params = new URLSearchParams(location.search);
 const TOKEN = params.get('t');
 
-let currentCode = '';
-let countdownInterval = null;
-let pollInterval = null;
-let expiresAt = 0;
+const SHOW_DURATION = 45;   // ثانية يظهر فيها الكود
+const COOLDOWN = 20;         // ثانية cooldown بين الطلبات
+const WARN_SECONDS = 5;      // countdown قبل ظهور الكود
 
-function show(state) {
-  ['waiting','ready','expired','invalid'].forEach(s => {
-    document.getElementById('state-' + s).style.display = s === state ? 'block' : 'none';
+let currentCode = '';
+let passVisible = false;
+let accountPass = '';
+let codeTimer = null;
+let cooldownTimer = null;
+let codeExpireAt = 0;
+
+// ── Load slot info ─────────────────────────────────────────────────────────
+async function loadSlot() {
+  if (!TOKEN) { showInvalid(); return; }
+  try {
+    const r = await fetch(`${API}/api/slot/${TOKEN}`);
+    if (r.status === 404) { showInvalid(); return; }
+    const data = await r.json();
+
+    document.getElementById('service-badge').textContent = data.label || 'كود التحقق';
+    document.title = `Mr10x — ${data.label || 'كود التحقق'}`;
+
+    document.getElementById('cred-email').textContent = data.account_email || '—';
+    accountPass = data.account_password || '';
+    document.getElementById('cred-pass').textContent = data.account_password ? '••••••••' : '—';
+
+    if (!data.account_email && !data.account_password) {
+      document.getElementById('creds-box').style.display = 'none';
+    }
+  } catch(e) {
+    showInvalid();
+  }
+}
+
+function showInvalid() {
+  document.getElementById('creds-box').style.display = 'none';
+  document.getElementById('btn-get').style.display = 'none';
+  document.getElementById('state-invalid').classList.add('show');
+}
+
+// ── Toggle password visibility ─────────────────────────────────────────────
+function togglePass() {
+  passVisible = !passVisible;
+  const el = document.getElementById('cred-pass');
+  const btn = document.getElementById('show-pass-btn');
+  el.textContent = passVisible ? (accountPass || '—') : '••••••••';
+  btn.textContent = passVisible ? '🙈' : '👁';
+}
+
+// ── Copy credentials ───────────────────────────────────────────────────────
+function copyCred(type) {
+  const val = type === 'email'
+    ? document.getElementById('cred-email').textContent
+    : accountPass;
+  if (!val || val === '—') return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btns = document.querySelectorAll('.btn-copy-cred');
+    const idx = type === 'email' ? 0 : 1;
+    btns[idx].textContent = '✓';
+    btns[idx].classList.add('done');
+    setTimeout(() => { btns[idx].textContent = 'نسخ'; btns[idx].classList.remove('done'); }, 2000);
+    showToast(type === 'email' ? 'تم نسخ الإيميل ✓' : 'تم نسخ الباسورد ✓');
   });
 }
 
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
+// ── Request code ───────────────────────────────────────────────────────────
+async function requestCode() {
+  if (!TOKEN) return;
+  const btn = document.getElementById('btn-get');
+  btn.disabled = true;
+
+  // Hide previous state
+  document.getElementById('code-panel').classList.remove('show');
+  document.getElementById('no-code-msg').classList.remove('show');
+
+  // 5-second countdown overlay
+  await showCountdown();
+
+  // Fetch code
+  try {
+    const r = await fetch(`${API}/api/code/${TOKEN}`);
+    const data = await r.json();
+
+    if (data.status === 'ready') {
+      showCode(data.code);
+      startCooldown();
+    } else {
+      document.getElementById('no-code-msg').classList.add('show');
+      startCooldown();
+    }
+  } catch(e) {
+    document.getElementById('no-code-msg').classList.add('show');
+    startCooldown();
+  }
 }
 
-function copyCode() {
+// ── 5s countdown overlay ───────────────────────────────────────────────────
+function showCountdown() {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('overlay-countdown');
+    const numEl = document.getElementById('overlay-num');
+    const circle = document.getElementById('ring-circle');
+    const circumference = 2 * Math.PI * 60; // 376.99
+
+    overlay.classList.add('show');
+    let count = WARN_SECONDS;
+    numEl.textContent = count;
+    circle.style.strokeDashoffset = 0; // start full
+
+    const interval = setInterval(() => {
+      count--;
+      numEl.textContent = count;
+      // Shrink arc
+      const pct = count / WARN_SECONDS;
+      circle.style.strokeDashoffset = circumference * (1 - pct);
+
+      if (count <= 0) {
+        clearInterval(interval);
+        overlay.classList.remove('show');
+        resolve();
+      }
+    }, 1000);
+  });
+}
+
+// ── Show code for 45s ─────────────────────────────────────────────────────
+function showCode(code) {
+  currentCode = code;
+  document.getElementById('code-value').textContent = code;
+  document.getElementById('code-panel').classList.add('show');
+
+  if (codeTimer) clearInterval(codeTimer);
+  codeExpireAt = Date.now() + SHOW_DURATION * 1000;
+
+  const fillEl = document.getElementById('code-timer-fill');
+  const numEl = document.getElementById('code-timer-num');
+
+  function tickCode() {
+    const rem = Math.max(0, Math.round((codeExpireAt - Date.now()) / 1000));
+    numEl.textContent = `0:${String(rem).padStart(2,'0')}`;
+    fillEl.style.width = ((rem / SHOW_DURATION) * 100) + '%';
+
+    if (rem <= 10) {
+      numEl.className = 'code-timer-num danger';
+      fillEl.style.background = 'var(--red)';
+    } else if (rem <= 20) {
+      numEl.className = 'code-timer-num warn';
+      fillEl.style.background = 'var(--yellow)';
+    } else {
+      numEl.className = 'code-timer-num';
+      fillEl.style.background = '';
+    }
+
+    if (rem <= 0) {
+      clearInterval(codeTimer);
+      document.getElementById('code-panel').classList.remove('show');
+      currentCode = '';
+    }
+  }
+  tickCode();
+  codeTimer = setInterval(tickCode, 1000);
+}
+
+// ── 20s cooldown ───────────────────────────────────────────────────────────
+function startCooldown() {
+  const btn = document.getElementById('btn-get');
+  const wrap = document.getElementById('cooldown-wrap');
+  const fill = document.getElementById('cooldown-fill');
+  const numEl = document.getElementById('cooldown-num');
+
+  btn.disabled = true;
+  btn.classList.add('cooldown');
+  btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> انتظر...`;
+  wrap.classList.add('show');
+  fill.style.width = '100%';
+
+  let rem = COOLDOWN;
+  numEl.textContent = rem;
+
+  if (cooldownTimer) clearInterval(cooldownTimer);
+  cooldownTimer = setInterval(() => {
+    rem--;
+    numEl.textContent = rem;
+    fill.style.width = ((rem / COOLDOWN) * 100) + '%';
+    if (rem <= 0) {
+      clearInterval(cooldownTimer);
+      btn.disabled = false;
+      btn.classList.remove('cooldown');
+      btn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> استلام الكود`;
+      wrap.classList.remove('show');
+    }
+  }, 1000);
+}
+
+// ── Copy code ──────────────────────────────────────────────────────────────
+function copyCurrentCode() {
   if (!currentCode) return;
   navigator.clipboard.writeText(currentCode).then(() => {
-    toast('تم نسخ الكود: ' + currentCode + ' ✓');
-    const btn = document.getElementById('copy-btn');
-    btn.classList.add('copied');
-    btn.textContent = '✓ تم النسخ!';
+    showToast('تم نسخ الكود: ' + currentCode + ' ✓');
+    const btn = document.getElementById('btn-copy-code');
+    btn.classList.add('done');
+    btn.innerHTML = `✓ تم النسخ!`;
     setTimeout(() => {
-      btn.classList.remove('copied');
+      btn.classList.remove('done');
       btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> نسخ الكود`;
     }, 2500);
   });
 }
 
-function startCountdown(seconds) {
-  if (countdownInterval) clearInterval(countdownInterval);
-  const total = 600; // 10 minutes max
-  expiresAt = Date.now() + seconds * 1000;
-
-  function tick() {
-    const remaining = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
-    const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
-    const secs = String(remaining % 60).padStart(2, '0');
-
-    const numEl = document.getElementById('countdown-num');
-    const fillEl = document.getElementById('countdown-fill');
-
-    numEl.textContent = `${mins}:${secs}`;
-    const pct = Math.max(0, (remaining / total) * 100);
-    fillEl.style.width = pct + '%';
-
-    if (remaining <= 30) {
-      numEl.className = 'countdown-num danger';
-      fillEl.style.background = 'var(--red)';
-    } else if (remaining <= 90) {
-      numEl.className = 'countdown-num warn';
-      fillEl.style.background = 'var(--yellow)';
-    }
-
-    if (remaining <= 0) {
-      clearInterval(countdownInterval);
-      if (pollInterval) clearInterval(pollInterval);
-      show('expired');
-    }
-  }
-  tick();
-  countdownInterval = setInterval(tick, 1000);
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-async function fetchCode() {
-  if (!TOKEN) { show('invalid'); return; }
-
-  try {
-    const r = await fetch(`${API}/api/code/${TOKEN}`);
-    if (r.status === 404) { show('invalid'); if (pollInterval) clearInterval(pollInterval); return; }
-    const data = await r.json();
-
-    if (data.label) {
-      document.getElementById('service-label').textContent = data.label;
-      document.title = `Mr10x — ${data.label}`;
-    }
-
-    if (data.status === 'ready') {
-      currentCode = data.code;
-      document.getElementById('code-value').textContent = data.code;
-      show('ready');
-      startCountdown(data.expires_in || 600);
-      if (pollInterval) clearInterval(pollInterval);
-    } else {
-      show('waiting');
-    }
-  } catch(e) {
-    // شبكة، يحاول مجدداً
-  }
-}
-
-if (!TOKEN) {
-  show('invalid');
-} else {
-  fetchCode();
-  pollInterval = setInterval(fetchCode, 3000);
-}
+// ── Init ───────────────────────────────────────────────────────────────────
+loadSlot();
 </script>
 </body>
 </html>
