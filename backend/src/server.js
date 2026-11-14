@@ -16,6 +16,11 @@ app.use(cors());
 app.use(express.json());
 
 // ─── Serve Frontend ───────────────────────────────────────────────────────────
+// الصفحة الرئيسية → landing.html (يجب أن يكون قبل express.static)
+app.get('/', (req, res) => {
+  res.sendFile(join(__dirname, '../../frontend/landing.html'));
+});
+
 app.use(express.static(join(__dirname, '../../frontend')));
 
 const PORT = process.env.PORT || 4000;
