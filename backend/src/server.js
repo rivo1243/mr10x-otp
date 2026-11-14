@@ -3,13 +3,20 @@ import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
 import db from './db.js';
 import { guessHost, testConnection } from './imap.js';
 import { pollAll } from './poller.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ─── Serve Frontend ───────────────────────────────────────────────────────────
+app.use(express.static(join(__dirname, '../../frontend')));
 
 const PORT = process.env.PORT || 4000;
 
