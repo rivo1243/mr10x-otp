@@ -1,7 +1,8 @@
 FROM node:20-alpine
 WORKDIR /app
-COPY package.json .
+RUN apk add --no-cache python3 make g++
+COPY backend/package.json .
 RUN npm install --omit=dev
-COPY src ./src
+COPY backend/src ./src
 EXPOSE 4000
 CMD ["node", "src/server.js"]
