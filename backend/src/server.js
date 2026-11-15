@@ -359,8 +359,7 @@ app.get('/api/code/:token', (req, res) => {
 });
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
-setInterval(() => pollAll(), 1_000); // كل ثانية
-pollAll(); // تشغيل فوري عند البدء
+pollAll(); // يبدأ connections IDLE الفورية
 
 app.listen(PORT, () => {
   console.log(`Mr10x OTP Backend running on port ${PORT}`);
