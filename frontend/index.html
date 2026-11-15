@@ -98,6 +98,49 @@
   .auth-toggle span { color: var(--accent2); cursor: pointer; font-weight: 600; }
   .auth-toggle span:hover { text-decoration: underline; }
 
+  /* ── Subscription Warning Banner ── */
+  #sub-warning-banner {
+    display: none;
+    margin: 20px 32px 0;
+    padding: 14px 20px;
+    background: rgba(245,158,11,0.12);
+    border: 1px solid rgba(245,158,11,0.45);
+    border-radius: 10px;
+    color: #fcd34d;
+    font-size: 14px;
+    font-weight: 500;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    line-height: 1.5;
+  }
+  #sub-warning-banner.show {
+    display: flex;
+  }
+  #sub-warning-banner .warn-icon { font-size: 20px; flex-shrink: 0; }
+  #sub-warning-banner .warn-text { flex: 1; }
+  #sub-warning-banner .warn-text strong { color: #fbbf24; }
+  .btn-renew {
+    white-space: nowrap;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: rgba(245,158,11,0.2);
+    border: 1px solid rgba(245,158,11,0.5);
+    color: #fbbf24;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-renew:hover {
+    background: rgba(245,158,11,0.35);
+    transform: translateY(-1px);
+  }
+
   /* ── Dashboard ── */
   #dashboard { display: none; }
   .dash-header {
@@ -340,6 +383,17 @@
   <div class="dash-header">
     <h1>لوحة التحكم <span id="dash-name"></span></h1>
     <button class="btn btn-primary btn-sm" onclick="openAddMailbox()">+ ربط صندوق إيميل</button>
+  </div>
+
+  <!-- تحذير انتهاء الاشتراك -->
+  <div id="sub-warning-banner">
+    <div class="warn-icon">⚠️</div>
+    <div class="warn-text">
+      <strong id="warn-days-text">باقي لك 5 أيام</strong> على انتهاء اشتراكك — هل تودّ التجديد قبل الانقطاع؟
+    </div>
+    <a id="warn-wa-link" class="btn-renew" target="_blank" rel="noopener">
+      <span>💬</span> تواصل للتجديد
+    </a>
   </div>
 
   <div class="stats-row" id="stats-row">
@@ -636,6 +690,9 @@ async function loadAll() {
   await Promise.all([loadMailboxes(), loadSlots(), loadProfile()]);
 }
 
+// رقم واتساب صاحب الموقع للتجديد
+const RENEWAL_WHATSAPP = '966580198626'; // رقم الواتساب للتجديد
+
 async function loadProfile() {
   try {
     const r = await apiFetch('/api/me');
@@ -643,17 +700,46 @@ async function loadProfile() {
     const data = await r.json();
     const card = document.getElementById('stat-sub-card');
     const numEl = document.getElementById('stat-sub');
+    const banner = document.getElementById('sub-warning-banner');
+
     if (!data.subscription_expires_at) {
       numEl.textContent = '—';
       card.style.borderColor = '';
       return;
     }
+
     const now = Math.floor(Date.now() / 1000);
     const daysLeft = Math.ceil((data.subscription_expires_at - now) / 86400);
+
     if (daysLeft <= 0) {
       numEl.textContent = 'منتهي';
       numEl.style.color = 'var(--red, #ef4444)';
       card.style.borderColor = 'rgba(239,68,68,0.4)';
+
+      // بانر منتهي
+      document.getElementById('warn-days-text').textContent = 'انتهى اشتراكك!';
+      banner.querySelector('.warn-text').innerHTML =
+        '<strong>انتهى اشتراكك</strong> — لن تصل الأكواد لزبائنك حتى يتم التجديد.';
+      const waMsg = encodeURIComponent('السلام عليكم، أريد تجديد اشتراكي في Mr10x.');
+      document.getElementById('warn-wa-link').href = `https://wa.me/${RENEWAL_WHATSAPP}?text=${waMsg}`;
+      banner.classList.add('show');
+      banner.style.borderColor = 'rgba(239,68,68,0.45)';
+      banner.style.background = 'rgba(239,68,68,0.1)';
+      banner.style.color = '#fca5a5';
+      banner.querySelector('.warn-text strong').style.color = '#f87171';
+
+    } else if (daysLeft <= 5) {
+      numEl.textContent = daysLeft;
+      numEl.style.color = '#f59e0b';
+      card.style.borderColor = 'rgba(245,158,11,0.4)';
+
+      // بانر تحذيري ≤5 أيام
+      const daysWord = daysLeft === 1 ? 'يوم واحد فقط' : `${daysLeft} أيام`;
+      document.getElementById('warn-days-text').textContent = `باقي لك ${daysWord}`;
+      const waMsg = encodeURIComponent(`السلام عليكم، اشتراكي في Mr10x سينتهي خلال ${daysLeft} أيام، أريد التجديد.`);
+      document.getElementById('warn-wa-link').href = `https://wa.me/${RENEWAL_WHATSAPP}?text=${waMsg}`;
+      banner.classList.add('show');
+
     } else if (daysLeft <= 7) {
       numEl.textContent = daysLeft;
       numEl.style.color = '#f59e0b';

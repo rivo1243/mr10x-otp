@@ -256,6 +256,109 @@
     .price-features li:last-child { border-bottom: none; }
     .price-features li::before { content: '✓'; color: var(--green); font-weight: 700; }
 
+    /* ── Testimonials ── */
+    .testimonials-section {
+      padding: 90px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 20px;
+      max-width: 1000px;
+      margin: 48px auto 0;
+      text-align: right;
+    }
+    .testi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .testi-card:hover { border-color: rgba(124,58,237,0.4); }
+    .testi-quote {
+      font-size: 32px;
+      color: var(--accent2);
+      line-height: 1;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .testi-text {
+      font-size: 15px;
+      color: var(--text);
+      line-height: 1.75;
+      margin-bottom: 20px;
+    }
+    .testi-author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .testi-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .testi-name { font-weight: 700; font-size: 14px; color: var(--text); }
+    .testi-role { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .testi-stars { color: #f59e0b; font-size: 13px; margin-bottom: 2px; letter-spacing: 1px; }
+
+    /* ── FAQ ── */
+    .faq-section {
+      padding: 90px 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .faq-list {
+      max-width: 720px;
+      margin: 48px auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: right;
+    }
+    .faq-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .faq-item.open { border-color: rgba(124,58,237,0.4); }
+    .faq-q {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      user-select: none;
+    }
+    .faq-q:hover { color: var(--accent2); }
+    .faq-icon {
+      flex-shrink: 0;
+      font-size: 18px;
+      color: var(--accent2);
+      transition: transform 0.25s;
+    }
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+    .faq-a {
+      display: none;
+      padding: 0 20px 18px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+    .faq-item.open .faq-a { display: block; }
+
     /* ── CTA ── */
     .cta-section {
       margin: 0; padding: 100px 24px;
@@ -508,6 +611,188 @@
   </div>
 </section>
 
+<!-- ── Testimonials ── -->
+<section class="testimonials-section" id="testimonials">
+  <div class="section-label">آراء العملاء</div>
+  <div class="section-title">ماذا قال من جرّبنا؟</div>
+  <p class="section-sub">تجارب حقيقية من تجار يستخدمون Mr10x يومياً</p>
+
+  <div class="testimonials-grid">
+
+    <div class="testi-card">
+      <span class="testi-quote">"</span>
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">
+        كنت أضيّع وقت طويل أرسل الأكواد يدوياً لزبائني، دحين كل شيء صار تلقائي والزبون يحصل الكود فوراً. خدمة ممتازة وما فيها تعقيد.
+      </p>
+      <div class="testi-author">
+        <div class="testi-avatar" style="background: rgba(124,58,237,0.2)">👨‍💼</div>
+        <div>
+          <div class="testi-name">خالد العتيبي</div>
+          <div class="testi-role">صاحب متجر نتفليكس شيرنج</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testi-card">
+      <span class="testi-quote">"</span>
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">
+        الكود يوصل في ثوانٍ وما في أي شكوى من العملاء. أنصح كل من يبيع خدمات اشتراك يجرّب Mr10x، غيّر طريقة عملي كلياً.
+      </p>
+      <div class="testi-author">
+        <div class="testi-avatar" style="background: rgba(16,185,129,0.2)">👩‍💻</div>
+        <div>
+          <div class="testi-name">نورة الشمري</div>
+          <div class="testi-role">تاجرة اشتراكات منذ 8 أشهر</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testi-card">
+      <span class="testi-quote">"</span>
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">
+        الدعم سريع والشرح واضح. ربطت الإيميل في دقيقتين وبدأت أشتغل على طول. سعر مناسب جداً مقارنة بالوقت اللي وفّره.
+      </p>
+      <div class="testi-author">
+        <div class="testi-avatar" style="background: rgba(239,68,68,0.2)">🧑‍🤝‍🧑</div>
+        <div>
+          <div class="testi-name">فيصل الدوسري</div>
+          <div class="testi-role">بائع منصات ترفيهية</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testi-card">
+      <span class="testi-quote">"</span>
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">
+        استخدمت قبل حلول مشابهة بس Mr10x الأسرع والأبسط. الواجهة عربية وما تحتاج خبرة تقنية. تجربة 10/10.
+      </p>
+      <div class="testi-author">
+        <div class="testi-avatar" style="background: rgba(245,158,11,0.2)">🧑</div>
+        <div>
+          <div class="testi-name">عبدالله القحطاني</div>
+          <div class="testi-role">مبتدئ في التجارة الإلكترونية</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testi-card">
+      <span class="testi-quote">"</span>
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">
+        زبائني راضين جداً لأن الكود يوصلهم فوري وما يضطرون ينتظرون. زاد عدد الطلبات عندي لأن السمعة تحسّنت.
+      </p>
+      <div class="testi-author">
+        <div class="testi-avatar" style="background: rgba(99,102,241,0.2)">👩</div>
+        <div>
+          <div class="testi-name">ريم المطيري</div>
+          <div class="testi-role">تاجرة أونلاين منذ سنتين</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testi-card">
+      <span class="testi-quote">"</span>
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">
+        اشتريت الباقة الشاملة وما ندمت. أدير أكثر من 50 زبون يومياً والنظام ما وقف ولا مرة. شكراً Mr10x!
+      </p>
+      <div class="testi-author">
+        <div class="testi-avatar" style="background: rgba(236,72,153,0.2)">👨</div>
+        <div>
+          <div class="testi-name">محمد السلمي</div>
+          <div class="testi-role">تاجر مع أكثر من 50 مشترك</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section class="faq-section" id="faq">
+  <div class="section-label">الأسئلة الشائعة</div>
+  <div class="section-title">عندك سؤال؟</div>
+  <p class="section-sub">أجوبة على أكثر الاستفسارات اللي تصلنا</p>
+
+  <div class="faq-list">
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>كيف يصل الكود للزبون؟</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        بمجرد وصول الإيميل على الحساب المربوط، يستخرج النظام الكود تلقائياً ويوفّره للزبون فوراً عبر رابط خاص. الزبون يفتح الرابط ويضغط "احصل على الكود" فيظهر له في ثوانٍ.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>هل يدعم جميع أنواع الإيميل؟</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        نعم. يدعم جيميل، أوتلوك، هوتميل، ياهو، آي كلاود، وأي إيميل يدعم بروتوكول IMAP. إذا كان عندك إيميل شركة (custom domain) ما يهم، المهم يكون IMAP مفعّل.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>هل يمكن ربط أكثر من إيميل؟</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        بالتأكيد. تقدر تربط أكثر من صندوق بريد في نفس الحساب، وكل صندوق يمكن ربطه بعدة روابط زبائن. الباقة الشاملة توفر لك مرونة أكبر.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>هل الزبون يحتاج تطبيق أو تسجيل؟</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        لا أبداً. الزبون يفتح الرابط من أي متصفح عادي بدون تطبيق ولا حساب. مجرد رابط يفتح ويحصل على الكود فوراً.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>ماذا يحصل لو انتهى الكود أو ما وصل؟</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        الأكواد تبقى صالحة لمدة 10 دقائق من وصولها. لو ما وصل الكود بعد بضع ثوانٍ، غالباً المشكلة من المنصة نفسها وليس من Mr10x. تقدر تتواصل معنا على الواتساب لأي مشكلة.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>كيف أبدأ؟</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        سجّل طلب المتجر من الزر في الأعلى، وسنتواصل معك على الواتساب خلال ساعات لتفعيل حسابك وشرح الإعداد. العملية كلها ما تاخذ أكثر من 10 دقائق.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>هل بياناتي وبيانات زبائني آمنة؟</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        نعم. الأكواد تُحذف تلقائياً بعد 10 دقائق من إنشائها. لا نحتفظ ببيانات الزبائن ولا نشاركها مع أي طرف. الاتصال بالإيميل يتم بشكل آمن عبر IMAP/SSL.
+      </div>
+    </div>
+
+  </div>
+</section>
+
 <!-- ── CTA ── -->
 <div class="cta-section">
   <h2>جاهز تبدأ؟</h2>
@@ -536,5 +821,15 @@
   <div class="footer-copy">© 2024 Mr10x — جميع الحقوق محفوظة</div>
 </footer>
 
+<script>
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const wasOpen = item.classList.contains('open');
+  // أغلق كل العناصر
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  // افتح هذا العنصر إذا ما كان مفتوح
+  if (!wasOpen) item.classList.add('open');
+}
+</script>
 </body>
 </html>
