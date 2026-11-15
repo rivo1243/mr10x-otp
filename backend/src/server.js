@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import nodemailer from 'nodemailer';
 import db from './db.js';
 import { guessHost, testConnection } from './imap.js';
 import { pollAll } from './poller.js';
@@ -50,30 +49,35 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
-// ─── Mailer ───────────────────────────────────────────────────────────────────
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
-const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
-const SMTP_USER = process.env.SMTP_USER || 'op775t@gmail.com';
-const SMTP_PASS = process.env.SMTP_PASS || 'cgljostsgeqzqdv';
-const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+// ─── Mailer (Resend HTTP API) ─────────────────────────────────────────────────
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
-let mailer = null;
-if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
-  mailer = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
+async function sendEmail({ to, subject, html }) {
+  if (!RESEND_API_KEY) {
+    console.log(`[MAIL] no RESEND_API_KEY — skipping email to ${to}`);
+    return;
+  }
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ from: 'Mr10x <onboarding@resend.dev>', to, subject, html })
   });
+  if (!r.ok) {
+    const err = await r.text();
+    throw new Error(`Resend error ${r.status}: ${err}`);
+  }
+  console.log(`[MAIL] sent to ${to} ✓`);
 }
 
 async function sendVerificationEmail(toEmail, toName, code) {
-  if (!mailer) {
-    console.log(`[MAIL] كود التحقق لـ ${toEmail}: ${code} (SMTP غير مضبوط)`);
+  if (!RESEND_API_KEY) {
+    console.log(`[MAIL] كود التحقق لـ ${toEmail}: ${code} (RESEND_API_KEY غير مضبوط)`);
     return;
   }
-  await mailer.sendMail({
-    from: `"Mr10x" <${SMTP_FROM}>`,
+  await sendEmail({
     to: toEmail,
     subject: 'كود تأكيد التسجيل في Mr10x',
     html: `
@@ -182,28 +186,23 @@ app.post('/api/forgot-password', async (req, res) => {
   const BASE_URL = process.env.BASE_URL || 'https://mr10x-otp-production.up.railway.app';
   const resetLink = `${BASE_URL}/reset-password.html?token=${token}`;
 
-  if (mailer) {
-    try {
-      await mailer.sendMail({
-        from: `"Mr10x" <${SMTP_FROM}>`,
-        to: seller.email,
-        subject: 'إعادة تعيين كلمة المرور — Mr10x',
-        html: `
-          <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; background:#0f0f1a; color:#e2e8f0; padding:32px; border-radius:12px;">
-            <h2 style="color:#a855f7; margin-bottom:8px;">Mr10x</h2>
-            <p>مرحباً ${seller.name}،</p>
-            <p>طلبت إعادة تعيين كلمة مرورك. اضغط الزر أدناه:</p>
-            <a href="${resetLink}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">إعادة تعيين كلمة المرور</a>
-            <p style="color:#94a3b8;font-size:13px;">الرابط صالح لمدة 30 دقيقة فقط. إذا لم تطلب هذا، تجاهل الرسالة.</p>
-          </div>
-        `
-      });
-      console.log(`[forgot-password] email sent successfully to: ${seller.email}`);
-    } catch (mailErr) {
-      console.error(`[forgot-password] SMTP error:`, mailErr.message);
-    }
-  } else {
-    console.log(`[forgot-password] no mailer — reset link: ${resetLink}`);
+  try {
+    await sendEmail({
+      to: seller.email,
+      subject: 'إعادة تعيين كلمة المرور — Mr10x',
+      html: `
+        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; background:#0f0f1a; color:#e2e8f0; padding:32px; border-radius:12px;">
+          <h2 style="color:#a855f7; margin-bottom:8px;">Mr10x</h2>
+          <p>مرحباً ${seller.name}،</p>
+          <p>طلبت إعادة تعيين كلمة مرورك. اضغط الزر أدناه:</p>
+          <a href="${resetLink}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">إعادة تعيين كلمة المرور</a>
+          <p style="color:#94a3b8;font-size:13px;">الرابط صالح لمدة 30 دقيقة فقط. إذا لم تطلب هذا، تجاهل الرسالة.</p>
+        </div>
+      `
+    });
+    console.log(`[forgot-password] email sent to: ${seller.email}`);
+  } catch (mailErr) {
+    console.error(`[forgot-password] mail error:`, mailErr.message);
   }
 
   res.json({ ok: true });
