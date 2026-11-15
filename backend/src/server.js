@@ -49,26 +49,30 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
-// ─── Mailer (Resend HTTP API) ─────────────────────────────────────────────────
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+// ─── Mailer (Gmail SMTP) ──────────────────────────────────────────────────────
+const GMAIL_USER = process.env.GMAIL_USER || 'op775t@gmail.com';
+const GMAIL_PASS = process.env.GMAIL_PASS;
 
 async function sendEmail({ to, subject, html }) {
-  if (!RESEND_API_KEY) {
-    console.log(`[MAIL] no RESEND_API_KEY — skipping email to ${to}`);
+  if (!GMAIL_PASS) {
+    console.log(`[MAIL] no GMAIL_PASS — skipping email to ${to}`);
     return;
   }
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ from: 'Mr10x <onboarding@resend.dev>', to, subject, html })
+
+  // استخدام nodemailer عبر Gmail SMTP
+  const { createTransport } = await import('nodemailer');
+  const transporter = createTransport({
+    service: 'gmail',
+    auth: { user: GMAIL_USER, pass: GMAIL_PASS }
   });
-  if (!r.ok) {
-    const err = await r.text();
-    throw new Error(`Resend error ${r.status}: ${err}`);
-  }
+
+  await transporter.sendMail({
+    from: `Mr10x <${GMAIL_USER}>`,
+    to,
+    subject,
+    html
+  });
+
   console.log(`[MAIL] sent to ${to} ✓`);
 }
 
