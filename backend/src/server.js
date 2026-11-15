@@ -164,9 +164,14 @@ app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email required' });
 
+  console.log(`[forgot-password] request for: ${email}`);
+
   const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
   // نرجع نجاح دائماً حتى لا نكشف وجود الإيميل
-  if (!seller) return res.json({ ok: true });
+  if (!seller) {
+    console.log(`[forgot-password] email not found: ${email}`);
+    return res.json({ ok: true });
+  }
 
   const token = randomUUID().replace(/-/g, '');
   const expiresAt = Math.floor(Date.now() / 1000) + 60 * 30; // 30 دقيقة
@@ -178,20 +183,27 @@ app.post('/api/forgot-password', async (req, res) => {
   const resetLink = `${BASE_URL}/reset-password.html?token=${token}`;
 
   if (mailer) {
-    await mailer.sendMail({
-      from: `"Mr10x" <${SMTP_FROM}>`,
-      to: seller.email,
-      subject: 'إعادة تعيين كلمة المرور — Mr10x',
-      html: `
-        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; background:#0f0f1a; color:#e2e8f0; padding:32px; border-radius:12px;">
-          <h2 style="color:#a855f7; margin-bottom:8px;">Mr10x</h2>
-          <p>مرحباً ${seller.name}،</p>
-          <p>طلبت إعادة تعيين كلمة مرورك. اضغط الزر أدناه:</p>
-          <a href="${resetLink}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">إعادة تعيين كلمة المرور</a>
-          <p style="color:#94a3b8;font-size:13px;">الرابط صالح لمدة 30 دقيقة فقط. إذا لم تطلب هذا، تجاهل الرسالة.</p>
-        </div>
-      `
-    });
+    try {
+      await mailer.sendMail({
+        from: `"Mr10x" <${SMTP_FROM}>`,
+        to: seller.email,
+        subject: 'إعادة تعيين كلمة المرور — Mr10x',
+        html: `
+          <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; background:#0f0f1a; color:#e2e8f0; padding:32px; border-radius:12px;">
+            <h2 style="color:#a855f7; margin-bottom:8px;">Mr10x</h2>
+            <p>مرحباً ${seller.name}،</p>
+            <p>طلبت إعادة تعيين كلمة مرورك. اضغط الزر أدناه:</p>
+            <a href="${resetLink}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">إعادة تعيين كلمة المرور</a>
+            <p style="color:#94a3b8;font-size:13px;">الرابط صالح لمدة 30 دقيقة فقط. إذا لم تطلب هذا، تجاهل الرسالة.</p>
+          </div>
+        `
+      });
+      console.log(`[forgot-password] email sent successfully to: ${seller.email}`);
+    } catch (mailErr) {
+      console.error(`[forgot-password] SMTP error:`, mailErr.message);
+    }
+  } else {
+    console.log(`[forgot-password] no mailer — reset link: ${resetLink}`);
   }
 
   res.json({ ok: true });
