@@ -141,16 +141,16 @@
     .logos { padding: 48px 24px; text-align: center; }
     .logos p { font-size: 13px; color: var(--muted); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1px; }
     .logos-row {
-      display: flex; gap: 32px; justify-content: center; flex-wrap: wrap;
+      display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;
       align-items: center;
     }
     .logo-pill {
       background: var(--bg3); border: 1px solid var(--border);
       border-radius: 100px; padding: 10px 24px;
       font-size: 14px; font-weight: 600; color: var(--muted);
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; gap: 10px;
     }
-    .logo-icon { font-size: 18px; }
+    .logo-pill img { width: 22px; height: 22px; object-fit: contain; border-radius: 4px; }
 
     /* ── SECTION ── */
     section {
@@ -342,12 +342,35 @@
 <div class="logos">
   <p>يعمل مع جميع المنصات التي ترسل رموز OTP على الإيميل</p>
   <div class="logos-row">
-    <div class="logo-pill"><span class="logo-icon">🎬</span>شاهد</div>
-    <div class="logo-pill"><span class="logo-icon">📺</span>Netflix</div>
-    <div class="logo-pill"><span class="logo-icon">🎵</span>Spotify</div>
-    <div class="logo-pill"><span class="logo-icon">🎮</span>PlayStation</div>
-    <div class="logo-pill"><span class="logo-icon">🛒</span>Amazon</div>
-    <div class="logo-pill"><span class="logo-icon">📱</span>وأكثر...</div>
+    <div class="logo-pill">
+      <img src="https://logo.clearbit.com/shahid.net" alt="شاهد" onerror="this.style.display='none'">
+      شاهد
+    </div>
+    <div class="logo-pill">
+      <img src="https://logo.clearbit.com/netflix.com" alt="Netflix" onerror="this.style.display='none'">
+      Netflix
+    </div>
+    <div class="logo-pill">
+      <img src="https://logo.clearbit.com/spotify.com" alt="Spotify" onerror="this.style.display='none'">
+      Spotify
+    </div>
+    <div class="logo-pill">
+      <img src="https://logo.clearbit.com/playstation.com" alt="PlayStation" onerror="this.style.display='none'">
+      PlayStation
+    </div>
+    <div class="logo-pill">
+      <img src="https://logo.clearbit.com/amazon.com" alt="Amazon" onerror="this.style.display='none'">
+      Amazon
+    </div>
+    <div class="logo-pill">
+      <img src="https://logo.clearbit.com/stc.com.sa" alt="STC" onerror="this.style.display='none'">
+      STC TV
+    </div>
+    <div class="logo-pill">
+      <img src="https://logo.clearbit.com/disneyplus.com" alt="Disney+" onerror="this.style.display='none'">
+      Disney+
+    </div>
+    <div class="logo-pill" style="color: var(--accent2);">+ المزيد</div>
   </div>
 </div>
 
@@ -372,7 +395,7 @@
     <div class="step-card">
       <div class="step-num">3</div>
       <h3>أنشئ رابط للزبون</h3>
-      <p>كل زبون يحصل على رابط خاص به. تضع فيه بيانات حسابه وسيفتح صفحة بسيطة ومحترمة.</p>
+      <p>كل زبون يحصل على رابط خاص به. تضع فيه بيانات حسابه وسيفتح صفحة بسيطة تعرض الكود تلقائياً.</p>
     </div>
     <div class="step-card">
       <div class="step-num">4</div>
@@ -443,6 +466,20 @@
   <div class="section-label">الأسعار</div>
   <div class="section-title">بسيط وواضح</div>
   <p class="section-sub">تواصل معنا على الواتساب لمعرفة الباقة المناسبة لك.</p>
+  <!-- شرح الصناديق -->
+  <div style="background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.2); border-radius:14px; padding:20px 24px; margin-top:32px; margin-bottom:0; display:flex; gap:16px; align-items:flex-start; text-align:right;">
+    <div style="font-size:28px; flex-shrink:0; margin-top:2px;">💡</div>
+    <div>
+      <div style="font-size:15px; font-weight:700; margin-bottom:8px; color:var(--accent2);">ايش يعني صندوق إيميل؟</div>
+      <div style="font-size:14px; color:var(--muted); line-height:1.75;">
+        كل اشتراك تبيعه يحتاج إيميل مرتبط فيه. مثال: لو تبيع اشتراكات شاهد، كل حساب شاهد عنده إيميل خاص به — هذا هو "الصندوق".<br>
+        <span style="color:var(--text); font-weight:600;">5 صناديق = تقدر تدير 5 اشتراكات في نفس الوقت.</span><br>
+        <span style="color:var(--text); font-weight:600;">20 صندوق = تقدر تدير 20 اشتراك في نفس الوقت.</span><br>
+        أما "روابط الزبون" — فهي الروابط اللي تعطيها لزبائنك، كل زبون رابطه الخاص.
+      </div>
+    </div>
+  </div>
+
   <div class="pricing-grid">
     <div class="price-card">
       <div class="price-tier">مبتدئ</div>
