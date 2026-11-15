@@ -324,6 +324,7 @@
     <div class="stat-card"><div class="num" id="stat-mailboxes">0</div><div class="lbl">صناديق الإيميل</div></div>
     <div class="stat-card"><div class="num" id="stat-slots">0</div><div class="lbl">روابط الزبائن</div></div>
     <div class="stat-card"><div class="num" id="stat-codes">0</div><div class="lbl">أكواد تم تسليمها</div></div>
+    <div class="stat-card" id="stat-sub-card"><div class="num" id="stat-sub">—</div><div class="lbl">أيام الاشتراك</div></div>
   </div>
 
   <div class="tabs">
@@ -518,6 +519,7 @@ async function submitAuth() {
 
     TOKEN = data.token;
     localStorage.setItem('mr10x_token', TOKEN);
+    localStorage.setItem('mr10x_name', data.name || '');
     showDashboard(data.name);
     loadAll();
   } catch(e) {
@@ -557,7 +559,37 @@ async function apiFetch(path, opts = {}) {
 }
 
 async function loadAll() {
-  await Promise.all([loadMailboxes(), loadSlots()]);
+  await Promise.all([loadMailboxes(), loadSlots(), loadProfile()]);
+}
+
+async function loadProfile() {
+  try {
+    const r = await apiFetch('/api/me');
+    if (!r.ok) return;
+    const data = await r.json();
+    const card = document.getElementById('stat-sub-card');
+    const numEl = document.getElementById('stat-sub');
+    if (!data.subscription_expires_at) {
+      numEl.textContent = '—';
+      card.style.borderColor = '';
+      return;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const daysLeft = Math.ceil((data.subscription_expires_at - now) / 86400);
+    if (daysLeft <= 0) {
+      numEl.textContent = 'منتهي';
+      numEl.style.color = 'var(--red, #ef4444)';
+      card.style.borderColor = 'rgba(239,68,68,0.4)';
+    } else if (daysLeft <= 7) {
+      numEl.textContent = daysLeft;
+      numEl.style.color = '#f59e0b';
+      card.style.borderColor = 'rgba(245,158,11,0.4)';
+    } else {
+      numEl.textContent = daysLeft;
+      numEl.style.color = 'var(--accent2)';
+      card.style.borderColor = '';
+    }
+  } catch {}
 }
 
 let mailboxCache = [];
@@ -760,12 +792,15 @@ async function deleteSlot(id) {
 
 // ── Init ──
 if (TOKEN) {
-  apiFetch('/api/mailboxes').then(r => {
+  apiFetch('/api/me').then(async r => {
     if (r.ok) {
-      showDashboard(localStorage.getItem('mr10x_name') || '');
+      const me = await r.json();
+      localStorage.setItem('mr10x_name', me.name || '');
+      showDashboard(me.name);
       loadAll();
     } else {
       localStorage.removeItem('mr10x_token');
+      localStorage.removeItem('mr10x_name');
       TOKEN = null;
     }
   }).catch(() => {});

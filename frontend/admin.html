@@ -384,6 +384,43 @@
   /* ── Date ── */
   .date-cell { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
+  /* ── Subscription Input ── */
+  .sub-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sub-date-input {
+    padding: 5px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+  .sub-date-input:focus { outline: none; border-color: var(--accent); }
+  .sub-info { font-size: 11px; color: var(--muted); }
+  .sub-info.expiring { color: var(--warning); }
+  .sub-info.expired { color: var(--danger); }
+  .sub-info.ok { color: var(--success); }
+  .btn-sub {
+    background: rgba(124,58,237,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(124,58,237,0.3);
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 8px;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-sub:hover { background: rgba(124,58,237,0.28); }
+
   /* ── Search & Filter ── */
   .table-toolbar {
     display: flex;
@@ -716,12 +753,36 @@ function renderTable(tab, sellers) {
     }
     actions += `<button class="btn btn-ghost" style="color:var(--danger)" onclick="askDelete('${s.id}', '${escapeHtml(s.name)}')">🗑️</button>`;
 
+    // بناء خلية الاشتراك
+    const now = Math.floor(Date.now() / 1000);
+    let subInfo = '<span class="sub-info">لا يوجد اشتراك</span>';
+    let subInputVal = '';
+    if (s.subscription_expires_at) {
+      const daysLeft = Math.ceil((s.subscription_expires_at - now) / 86400);
+      subInputVal = new Date(s.subscription_expires_at * 1000).toISOString().split('T')[0];
+      if (daysLeft <= 0) {
+        subInfo = `<span class="sub-info expired">منتهي منذ ${Math.abs(daysLeft)} يوم</span>`;
+      } else if (daysLeft <= 7) {
+        subInfo = `<span class="sub-info expiring">ينتهي خلال ${daysLeft} أيام</span>`;
+      } else {
+        subInfo = `<span class="sub-info ok">متبقي ${daysLeft} يوم</span>`;
+      }
+    }
+    const subInputId = `sub-input-${s.id}`;
+    const subCell = `
+      <div class="sub-row">
+        <input type="date" id="${subInputId}" class="sub-date-input" value="${subInputVal}">
+        <button class="btn-sub" onclick="setSubscription('${s.id}', '${subInputId}')">تعيين</button>
+      </div>
+      ${subInfo}`;
+
     return `<tr>
       <td data-label="الاسم"><strong>${escapeHtml(s.name)}</strong></td>
       <td data-label="البريد الإلكتروني" dir="ltr" style="font-size:13px">${escapeHtml(s.email)}</td>
       <td data-label="واتساب">${wa}</td>
       <td data-label="الحالة"><span class="status-badge ${s.status}">${statusLabel}</span></td>
       <td data-label="تاريخ التسجيل" class="date-cell">${formatDate(s.created_at)}</td>
+      <td data-label="الاشتراك">${subCell}</td>
       <td data-label="الإجراءات"><div class="actions-cell">${actions}</div></td>
     </tr>`;
   }).join('');
@@ -736,6 +797,7 @@ function renderTable(tab, sellers) {
             <th>واتساب</th>
             <th>الحالة</th>
             <th>تاريخ التسجيل</th>
+            <th>الاشتراك</th>
             <th>الإجراءات</th>
           </tr>
         </thead>
@@ -754,6 +816,22 @@ function switchTab(name, el) {
 }
 
 // ── الإجراءات ──
+async function setSubscription(id, inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const dateVal = input.value; // YYYY-MM-DD or empty
+  try {
+    const r = await fetch(`${API}/api/admin/sellers/${id}/subscription`, {
+      method: 'PATCH',
+      headers: { 'x-admin-pass': ADMIN_PASS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expires_at: dateVal || null })
+    });
+    if (!r.ok) throw new Error();
+    toast(dateVal ? '✅ تم تعيين تاريخ الاشتراك' : '✅ تم إلغاء الاشتراك');
+    await loadSellers();
+  } catch(e) { toast('حدث خطأ أثناء تحديث الاشتراك'); }
+}
+
 async function approveSeller(id) {
   try {
     await fetch(`${API}/api/admin/sellers/${id}/approve`, {

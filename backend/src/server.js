@@ -80,7 +80,7 @@ app.get('/api/me', authMiddleware, (req, res) => {
 // ─── Admin API ────────────────────────────────────────────────────────────────
 // GET /api/admin/sellers — قائمة البائعين
 app.get('/api/admin/sellers', adminMiddleware, (req, res) => {
-  const sellers = db.prepare('SELECT id, name, email, phone, status, created_at FROM sellers ORDER BY created_at DESC').all();
+  const sellers = db.prepare('SELECT id, name, email, phone, status, created_at, subscription_expires_at FROM sellers ORDER BY created_at DESC').all();
   res.json(sellers);
 });
 
