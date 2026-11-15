@@ -51,10 +51,10 @@ function adminMiddleware(req, res, next) {
 }
 
 // ─── Mailer ───────────────────────────────────────────────────────────────────
-const SMTP_HOST = process.env.SMTP_HOST || '';
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
+const SMTP_USER = process.env.SMTP_USER || 'op775t@gmail.com';
+const SMTP_PASS = process.env.SMTP_PASS || 'cgljostsgeqzqdv';
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 
 let mailer = null;
@@ -157,6 +157,63 @@ app.post('/api/login', (req, res) => {
   if (seller.status === 'pending')
     return res.status(403).json({ error: 'pending', message: 'حسابك قيد المراجعة، سنتواصل معك على الواتساب قريباً.' });
   res.json({ token: seller.id, name: seller.name, subscription_expires_at: seller.subscription_expires_at || null });
+});
+
+// POST /api/forgot-password — طلب إعادة تعيين كلمة المرور
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
+  // نرجع نجاح دائماً حتى لا نكشف وجود الإيميل
+  if (!seller) return res.json({ ok: true });
+
+  const token = randomUUID().replace(/-/g, '');
+  const expiresAt = Math.floor(Date.now() / 1000) + 60 * 30; // 30 دقيقة
+
+  db.prepare('INSERT INTO password_resets (id, email, token, expires_at) VALUES (?, ?, ?, ?)')
+    .run(randomUUID(), seller.email, token, expiresAt);
+
+  const BASE_URL = process.env.BASE_URL || 'https://mr10x-otp-production.up.railway.app';
+  const resetLink = `${BASE_URL}/reset-password.html?token=${token}`;
+
+  if (mailer) {
+    await mailer.sendMail({
+      from: `"Mr10x" <${SMTP_FROM}>`,
+      to: seller.email,
+      subject: 'إعادة تعيين كلمة المرور — Mr10x',
+      html: `
+        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; background:#0f0f1a; color:#e2e8f0; padding:32px; border-radius:12px;">
+          <h2 style="color:#a855f7; margin-bottom:8px;">Mr10x</h2>
+          <p>مرحباً ${seller.name}،</p>
+          <p>طلبت إعادة تعيين كلمة مرورك. اضغط الزر أدناه:</p>
+          <a href="${resetLink}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">إعادة تعيين كلمة المرور</a>
+          <p style="color:#94a3b8;font-size:13px;">الرابط صالح لمدة 30 دقيقة فقط. إذا لم تطلب هذا، تجاهل الرسالة.</p>
+        </div>
+      `
+    });
+  }
+
+  res.json({ ok: true });
+});
+
+// POST /api/reset-password — تعيين كلمة مرور جديدة
+app.post('/api/reset-password', (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) return res.status(400).json({ error: 'Missing fields' });
+  if (password.length < 6) return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
+
+  const record = db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > ?')
+    .get(token, Math.floor(Date.now() / 1000));
+
+  if (!record) return res.status(400).json({ error: 'الرابط غير صالح أو منتهي الصلاحية' });
+
+  db.prepare('UPDATE sellers SET password = ? WHERE email = ?')
+    .run(hashPw(password), record.email);
+  db.prepare('UPDATE password_resets SET used = 1 WHERE token = ?')
+    .run(token);
+
+  res.json({ ok: true });
 });
 
 // GET /api/me — بيانات الحساب الحالي

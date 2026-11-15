@@ -370,6 +370,7 @@
       </div>
       <div id="auth-err" class="error-msg"></div>
       <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitAuth()" id="auth-submit-btn">دخول</button>
+      <a id="forgot-link" href="/reset-password.html" style="display:block;text-align:center;margin-top:12px;color:var(--muted);font-size:13px;text-decoration:none;">نسيت كلمة المرور؟</a>
       <div class="auth-toggle">
         <span id="auth-switch-text">ما عندك حساب؟</span>
         <span onclick="toggleAuthMode()"> <span id="auth-switch-btn">سجّل الحين</span></span>
@@ -550,6 +551,7 @@ function toggleAuthMode() {
   document.getElementById('auth-submit-btn').textContent = isRegister ? 'أرسل الطلب' : 'دخول';
   document.getElementById('auth-switch-text').textContent = isRegister ? 'عندك حساب؟' : 'ما عندك حساب؟';
   document.getElementById('auth-switch-btn').textContent = isRegister ? 'سجّل دخولك' : 'سجّل الحين';
+  document.getElementById('forgot-link').style.display = isRegister ? 'none' : 'block';
   // إخفاء رسالة الانتظار لو كانت ظاهرة
   document.getElementById('pending-box').style.display = 'none';
   document.getElementById('auth-form-content').style.display = 'block';

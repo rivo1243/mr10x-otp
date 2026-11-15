@@ -72,6 +72,16 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id         TEXT PRIMARY KEY,
+    email      TEXT NOT NULL,
+    token      TEXT UNIQUE NOT NULL,
+    expires_at INTEGER NOT NULL,
+    used       INTEGER DEFAULT 0
+  );
+`);
+
 // Migrations: إضافة حقول جديدة للجداول القديمة
 try { db.exec(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`); } catch {}
