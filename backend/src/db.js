@@ -59,6 +59,19 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS email_verifications (
+    id         TEXT PRIMARY KEY,
+    email      TEXT NOT NULL,
+    code       TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    password   TEXT NOT NULL,
+    phone      TEXT DEFAULT '',
+    expires_at INTEGER NOT NULL,
+    used       INTEGER DEFAULT 0
+  );
+`);
+
 // Migrations: إضافة حقول جديدة للجداول القديمة
 try { db.exec(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`); } catch {}

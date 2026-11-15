@@ -538,6 +538,26 @@
     </div>
   </div>
 
+  <!-- إحصائيات النظام -->
+  <div class="stats-bar" style="padding-top:0">
+    <div class="stat-card" style="border-color:rgba(99,102,241,0.3)">
+      <div class="num" id="stat-mailboxes" style="color:#818cf8">0</div>
+      <div class="lbl">📬 صناديق البريد</div>
+    </div>
+    <div class="stat-card" style="border-color:rgba(14,165,233,0.3)">
+      <div class="num" id="stat-slots" style="color:#38bdf8">0</div>
+      <div class="lbl">🔗 روابط الزبائن</div>
+    </div>
+    <div class="stat-card" style="border-color:rgba(16,185,129,0.3)">
+      <div class="num" id="stat-codes" style="color:#34d399">0</div>
+      <div class="lbl">📲 أكواد تم تسليمها</div>
+    </div>
+    <div class="stat-card" style="border-color:rgba(245,158,11,0.3)">
+      <div class="num" id="stat-subs" style="color:#fbbf24">0</div>
+      <div class="lbl">🔑 اشتراكات فعّالة</div>
+    </div>
+  </div>
+
   <div class="tabs-container">
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('pending', this)">
@@ -648,6 +668,7 @@ async function adminLogin() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     processData(data);
+    loadStats();
   } catch(e) {
     errEl.textContent = 'تعذر الاتصال بالسيرفر';
     errEl.style.display = 'block';
@@ -674,6 +695,20 @@ async function loadSellers() {
   } catch(e) {
     toast('تعذر جلب البيانات');
   }
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/api/admin/stats`, {
+      headers: { 'x-admin-pass': ADMIN_PASS }
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('stat-mailboxes').textContent = d.totalMailboxes ?? 0;
+    document.getElementById('stat-slots').textContent     = d.totalSlots ?? 0;
+    document.getElementById('stat-codes').textContent     = d.codesViewed ?? 0;
+    document.getElementById('stat-subs').textContent      = d.activeSubs ?? 0;
+  } catch(e) {}
 }
 
 function processData(data) {
@@ -890,7 +925,10 @@ async function confirmDelete() {
 
 // ── تحديث تلقائي كل 30 ثانية ──
 setInterval(() => {
-  if (ADMIN_PASS) loadSellers();
+  if (ADMIN_PASS) {
+    loadSellers();
+    loadStats();
+  }
 }, 30000);
 </script>
 </body>

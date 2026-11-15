@@ -285,6 +285,28 @@
       </a>
     </div>
 
+    <!-- شاشة إدخال كود التحقق -->
+    <div id="verify-box" style="display:none; text-align:center; padding:10px 0">
+      <div style="font-size:48px; margin-bottom:16px">📧</div>
+      <h3 style="margin-bottom:10px; font-size:20px">تأكيد البريد الإلكتروني</h3>
+      <p style="color:var(--muted); font-size:14px; line-height:1.7; margin-bottom:20px">
+        أرسلنا كود من 6 أرقام إلى بريدك — أدخله هنا للمتابعة.
+      </p>
+      <div class="form-group" style="text-align:right">
+        <label>كود التحقق</label>
+        <input type="text" id="verify-code-input" placeholder="000000" dir="ltr"
+          maxlength="6" inputmode="numeric"
+          style="text-align:center; font-size:24px; letter-spacing:6px; font-weight:700"
+          onkeyup="if(event.key==='Enter')confirmVerify()">
+      </div>
+      <div id="verify-err" class="error-msg" style="display:none; text-align:right"></div>
+      <button class="btn btn-primary" style="width:100%;padding:12px" onclick="confirmVerify()">تأكيد</button>
+      <button onclick="backToRegister()"
+        style="background:none;border:none;color:var(--muted);cursor:pointer;margin-top:12px;font-size:13px;font-family:inherit">
+        ← تعديل البيانات
+      </button>
+    </div>
+
     <!-- فورم تسجيل الدخول / التسجيل -->
     <div id="auth-form-content">
       <div id="register-name-group" class="form-group" style="display:none">
@@ -452,6 +474,7 @@
 const API = window.MR10X_API || 'https://mr10x-otp-production.up.railway.app';
 let TOKEN = localStorage.getItem('mr10x_token');
 let isRegister = false;
+let pendingVerifyId = null;
 
 function toast(msg, duration = 2500) {
   const t = document.getElementById('toast');
@@ -497,6 +520,15 @@ async function submitAuth() {
     });
     const data = await r.json();
 
+    // ── كود التحقق مطلوب ──
+    if (data.verify) {
+      pendingVerifyId = data.verifyId;
+      document.getElementById('auth-form-content').style.display = 'none';
+      document.getElementById('verify-box').style.display = 'block';
+      document.getElementById('verify-code-input').focus();
+      return;
+    }
+
     // ── حالة الانتظار بعد التسجيل ──
     if (data.pending) {
       document.getElementById('auth-form-content').style.display = 'none';
@@ -526,6 +558,48 @@ async function submitAuth() {
     errEl.textContent = 'تعذر الاتصال بالسيرفر';
     errEl.style.display = 'block';
   }
+}
+
+async function confirmVerify() {
+  const code = document.getElementById('verify-code-input').value.trim();
+  const errEl = document.getElementById('verify-err');
+  errEl.style.display = 'none';
+  if (!code || !pendingVerifyId) return;
+
+  try {
+    const r = await fetch(API + '/api/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verifyId: pendingVerifyId, code })
+    });
+    const data = await r.json();
+
+    if (data.pending) {
+      document.getElementById('verify-box').style.display = 'none';
+      document.getElementById('pending-box').style.display = 'block';
+      return;
+    }
+
+    if (!r.ok) {
+      errEl.textContent = data.error || 'الكود غير صحيح';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('verify-box').style.display = 'none';
+    document.getElementById('pending-box').style.display = 'block';
+  } catch(e) {
+    errEl.textContent = 'تعذر الاتصال بالسيرفر';
+    errEl.style.display = 'block';
+  }
+}
+
+function backToRegister() {
+  pendingVerifyId = null;
+  document.getElementById('verify-box').style.display = 'none';
+  document.getElementById('verify-code-input').value = '';
+  document.getElementById('verify-err').style.display = 'none';
+  document.getElementById('auth-form-content').style.display = 'block';
 }
 
 function logout() {
@@ -681,6 +755,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const isGmail = val.includes('@gmail.') || val.includes('@googlemail.');
       document.getElementById('gmail-hint').style.display = isGmail ? 'block' : 'none';
     });
+  }
+
+  // إذا جاء من landing.html بـ ?register=1 يفتح وضع التسجيل تلقائياً
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('register') === '1' && !isRegister) {
+    toggleAuthMode();
+    // scroll للأعلى وفوكس على حقل الاسم
+    window.scrollTo(0, 0);
+    setTimeout(() => {
+      const nameInput = document.getElementById('auth-name');
+      if (nameInput) nameInput.focus();
+    }, 100);
   }
 });
 

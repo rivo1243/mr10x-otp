@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
+import nodemailer from 'nodemailer';
 import db from './db.js';
 import { guessHost, testConnection } from './imap.js';
 import { pollAll } from './poller.js';
@@ -49,15 +50,102 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
+// ─── Mailer ───────────────────────────────────────────────────────────────────
+const SMTP_HOST = process.env.SMTP_HOST || '';
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+
+let mailer = null;
+if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
+  mailer = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS }
+  });
+}
+
+async function sendVerificationEmail(toEmail, toName, code) {
+  if (!mailer) {
+    console.log(`[MAIL] كود التحقق لـ ${toEmail}: ${code} (SMTP غير مضبوط)`);
+    return;
+  }
+  await mailer.sendMail({
+    from: `"Mr10x" <${SMTP_FROM}>`,
+    to: toEmail,
+    subject: 'كود تأكيد التسجيل في Mr10x',
+    html: `
+      <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto;">
+        <h2 style="color: #7c3aed;">مرحباً ${toName} 👋</h2>
+        <p>شكراً لتسجيلك في <strong>Mr10x</strong>. أدخل الكود التالي لتأكيد بريدك الإلكتروني:</p>
+        <div style="background: #1a1a2e; border: 2px solid #7c3aed; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+          <span style="font-size: 36px; font-weight: bold; color: #a855f7; letter-spacing: 8px;">${code}</span>
+        </div>
+        <p style="color: #888;">ينتهي الكود خلال 15 دقيقة.</p>
+        <p style="color: #888; font-size: 12px;">إذا لم تطلب هذا الكود تجاهل هذه الرسالة.</p>
+      </div>
+    `
+  });
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-app.post('/api/register', (req, res) => {
+// POST /api/register — إرسال كود التحقق على الإيميل
+app.post('/api/register', async (req, res) => {
   const { name, email, password, phone } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(email.toLowerCase());
   if (existing) return res.status(409).json({ error: 'Email already registered' });
-  const id = randomUUID();
+
+  // توليد كود 6 أرقام
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = Math.floor(Date.now() / 1000) + 900; // 15 دقيقة
+  const verifyId = randomUUID();
+
+  // حذف أي طلبات سابقة لنفس الإيميل
+  db.prepare('DELETE FROM email_verifications WHERE email = ?').run(email.toLowerCase());
+
+  db.prepare('INSERT INTO email_verifications (id, email, code, name, password, phone, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(verifyId, email.toLowerCase(), code, name, hashPw(password), phone || '', expiresAt);
+
+  try {
+    await sendVerificationEmail(email, name, code);
+  } catch (e) {
+    console.error('[MAIL ERROR]', e.message);
+    // لا نوقف العملية إذا فشل الإيميل — نكمل
+  }
+
+  res.json({ verify: true, verifyId });
+});
+
+// POST /api/verify-email — تأكيد الكود وإنشاء الحساب
+app.post('/api/verify-email', (req, res) => {
+  const { verifyId, code } = req.body || {};
+  if (!verifyId || !code) return res.status(400).json({ error: 'Missing fields' });
+
+  const record = db.prepare('SELECT * FROM email_verifications WHERE id = ?').get(verifyId);
+  if (!record) return res.status(404).json({ error: 'انتهت صلاحية الكود أو غير صحيح' });
+  if (record.used) return res.status(400).json({ error: 'تم استخدام هذا الكود مسبقاً' });
+  if (record.expires_at < Math.floor(Date.now() / 1000)) {
+    db.prepare('DELETE FROM email_verifications WHERE id = ?').run(verifyId);
+    return res.status(400).json({ error: 'انتهت صلاحية الكود، أعد التسجيل' });
+  }
+  if (record.code !== String(code).trim()) {
+    return res.status(400).json({ error: 'الكود غير صحيح' });
+  }
+
+  // تأكيد ناجح — إنشاء الحساب
+  const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(record.email);
+  if (existing) return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
+
+  const sellerId = randomUUID();
   db.prepare('INSERT INTO sellers (id, name, email, password, phone, status) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(id, name, email.toLowerCase(), hashPw(password), phone || '', 'pending');
+    .run(sellerId, record.name, record.email, record.password, record.phone, 'pending');
+
+  // وضع علامة مستخدم
+  db.prepare('UPDATE email_verifications SET used = 1 WHERE id = ?').run(verifyId);
+
   res.json({ pending: true });
 });
 
@@ -110,6 +198,20 @@ app.patch('/api/admin/sellers/:id/subscription', adminMiddleware, (req, res) => 
   res.json({ ok: true });
 });
 
+// GET /api/admin/stats — إحصائيات عامة للأدمن
+app.get('/api/admin/stats', adminMiddleware, (req, res) => {
+  const totalSellers     = db.prepare("SELECT COUNT(*) as n FROM sellers").get().n;
+  const activeSellers    = db.prepare("SELECT COUNT(*) as n FROM sellers WHERE status = 'active'").get().n;
+  const pendingSellers   = db.prepare("SELECT COUNT(*) as n FROM sellers WHERE status = 'pending'").get().n;
+  const totalMailboxes   = db.prepare("SELECT COUNT(*) as n FROM mailboxes").get().n;
+  const totalSlots       = db.prepare("SELECT COUNT(*) as n FROM slots").get().n;
+  const totalCodes       = db.prepare("SELECT COUNT(*) as n FROM codes").get().n;
+  const codesViewed      = db.prepare("SELECT COUNT(*) as n FROM codes WHERE viewed = 1").get().n;
+  const now              = Math.floor(Date.now() / 1000);
+  const activeSubs       = db.prepare("SELECT COUNT(*) as n FROM sellers WHERE subscription_expires_at IS NOT NULL AND subscription_expires_at > ?").get(now).n;
+  res.json({ totalSellers, activeSellers, pendingSellers, totalMailboxes, totalSlots, totalCodes, codesViewed, activeSubs });
+});
+
 // ─── Mailboxes ─────────────────────────────────────────────────────────────────
 app.get('/api/mailboxes', authMiddleware, (req, res) => {
   const rows = db.prepare('SELECT id, email, imap_host, imap_port, label, status, last_sync, last_error FROM mailboxes WHERE seller_id = ?')
@@ -120,6 +222,9 @@ app.get('/api/mailboxes', authMiddleware, (req, res) => {
 app.post('/api/mailboxes', authMiddleware, async (req, res) => {
   const { email, password, host, port, label } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  // حد خفي: 500 صندوق بريد لكل بائع
+  const mailboxCount = db.prepare('SELECT COUNT(*) as cnt FROM mailboxes WHERE seller_id = ?').get(req.seller.id);
+  if (mailboxCount.cnt >= 500) return res.status(400).json({ error: 'تعذّر إضافة صندوق البريد، يرجى التواصل مع الدعم.' });
   const imapHost = host || guessHost(email);
   const imapPort = Number(port) || 993;
   try {
