@@ -359,7 +359,7 @@ app.get('/api/code/:token', (req, res) => {
 });
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
-setInterval(() => pollAll(), 10_000); // كل 10 ثواني
+setInterval(() => pollAll(), 1_000); // كل ثانية
 pollAll(); // تشغيل فوري عند البدء
 
 app.listen(PORT, () => {
