@@ -64,5 +64,7 @@ try { db.exec(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`); } c
 try { db.exec(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE sellers ADD COLUMN phone TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE sellers ADD COLUMN status TEXT DEFAULT 'pending'`); } catch {}
+try { db.exec(`ALTER TABLE slots ADD COLUMN code_attempts INTEGER DEFAULT 0`); } catch {}
+try { db.exec(`ALTER TABLE sellers ADD COLUMN subscription_expires_at INTEGER DEFAULT NULL`); } catch {}
 
 export default db;

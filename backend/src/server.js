@@ -68,7 +68,13 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials' });
   if (seller.status === 'pending')
     return res.status(403).json({ error: 'pending', message: 'حسابك قيد المراجعة، سنتواصل معك على الواتساب قريباً.' });
-  res.json({ token: seller.id, name: seller.name });
+  res.json({ token: seller.id, name: seller.name, subscription_expires_at: seller.subscription_expires_at || null });
+});
+
+// GET /api/me — بيانات الحساب الحالي
+app.get('/api/me', authMiddleware, (req, res) => {
+  const seller = db.prepare('SELECT id, name, email, phone, status, subscription_expires_at FROM sellers WHERE id = ?').get(req.seller.id);
+  res.json(seller);
 });
 
 // ─── Admin API ────────────────────────────────────────────────────────────────
@@ -93,6 +99,14 @@ app.patch('/api/admin/sellers/:id/reject', adminMiddleware, (req, res) => {
 // DELETE /api/admin/sellers/:id — حذف بائع
 app.delete('/api/admin/sellers/:id', adminMiddleware, (req, res) => {
   db.prepare('DELETE FROM sellers WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// PATCH /api/admin/sellers/:id/subscription — تعيين تاريخ انتهاء الاشتراك
+app.patch('/api/admin/sellers/:id/subscription', adminMiddleware, (req, res) => {
+  const { expires_at } = req.body || {};
+  const ts = expires_at ? Math.floor(new Date(expires_at).getTime() / 1000) : null;
+  db.prepare('UPDATE sellers SET subscription_expires_at = ? WHERE id = ?').run(ts, req.params.id);
   res.json({ ok: true });
 });
 
@@ -197,7 +211,8 @@ app.get('/api/slot/:token', (req, res) => {
   res.json({
     label: slot.label,
     account_email: slot.account_email || '',
-    account_password: slot.account_password || ''
+    account_password: slot.account_password || '',
+    attempts_left: Math.max(0, 2 - (slot.code_attempts || 0))
   });
 });
 
@@ -205,6 +220,17 @@ app.get('/api/slot/:token', (req, res) => {
 app.get('/api/code/:token', (req, res) => {
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
+
+  // التحقق من حد المحاولات (2 محاولة فقط)
+  const attempts = slot.code_attempts || 0;
+  if (attempts >= 2) {
+    return res.json({
+      status: 'exhausted',
+      label: slot.label,
+      account_email: slot.account_email || '',
+      account_password: slot.account_password || ''
+    });
+  }
 
   const code = db.prepare(`
     SELECT code, received_at, expires_at FROM codes
@@ -214,14 +240,16 @@ app.get('/api/code/:token', (req, res) => {
 
   if (!code) return res.json({ status: 'waiting', label: slot.label });
 
-  // وضع علامة أنه شُوهد
+  // زيادة عداد المحاولات + وضع علامة شُوهد
+  db.prepare('UPDATE slots SET code_attempts = code_attempts + 1 WHERE id = ?').run(slot.id);
   db.prepare('UPDATE codes SET viewed = 1 WHERE slot_id = ? AND code = ?').run(slot.id, code.code);
 
   res.json({
     status: 'ready',
     code: code.code,
     label: slot.label,
-    expires_in: code.expires_at - Math.floor(Date.now() / 1000)
+    expires_in: code.expires_at - Math.floor(Date.now() / 1000),
+    attempts_left: Math.max(0, 2 - (attempts + 1))
   });
 });
 
