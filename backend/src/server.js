@@ -49,38 +49,54 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
-// ─── Mailer (Gmail SMTP) ──────────────────────────────────────────────────────
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+// ─── Mailer (Mailjet API) ─────────────────────────────────────────────────────
+const MAILJET_API_KEY    = process.env.MAILJET_API_KEY;
+const MAILJET_SECRET_KEY = process.env.MAILJET_SECRET_KEY;
+const MAILJET_FROM_EMAIL = process.env.MAILJET_FROM_EMAIL || 'for.evrything.mjeed@gmail.com';
+const MAILJET_FROM_NAME  = 'Mr10x';
 
 async function sendEmail({ to, subject, html }) {
-  if (!RESEND_API_KEY) {
-    console.error(`[MAIL ERROR] RESEND_API_KEY not set — cannot send email to ${to}`);
-    throw new Error('RESEND_API_KEY not configured');
+  if (!MAILJET_API_KEY || !MAILJET_SECRET_KEY) {
+    console.error(`[MAIL ERROR] Mailjet keys not set — cannot send email to ${to}`);
+    throw new Error('Mailjet API keys not configured');
   }
 
-  console.log(`[MAIL] attempting to send to ${to} via Resend`);
+  console.log(`[MAIL] attempting to send to ${to} via Mailjet`);
 
-  const res = await fetch('https://api.resend.com/emails', {
+  const auth = Buffer.from(`${MAILJET_API_KEY}:${MAILJET_SECRET_KEY}`).toString('base64');
+
+  const res = await fetch('https://api.mailjet.com/v3.1/send', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Authorization': `Basic ${auth}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Mr10x <onboarding@resend.dev>',
-      to,
-      subject,
-      html
+      Messages: [
+        {
+          From: { Email: MAILJET_FROM_EMAIL, Name: MAILJET_FROM_NAME },
+          To:   [{ Email: to }],
+          Subject: subject,
+          HTMLPart: html
+        }
+      ]
     })
   });
 
   if (!res.ok) {
     const err = await res.text();
-    console.error(`[MAIL ERROR] Resend responded ${res.status}: ${err}`);
-    throw new Error(`Resend error ${res.status}: ${err}`);
+    console.error(`[MAIL ERROR] Mailjet responded ${res.status}: ${err}`);
+    throw new Error(`Mailjet error ${res.status}: ${err}`);
   }
 
-  console.log(`[MAIL] sent to ${to} via Resend ✓`);
+  const data = await res.json();
+  const status = data?.Messages?.[0]?.Status;
+  if (status && status !== 'success') {
+    console.error(`[MAIL ERROR] Mailjet message status: ${status}`, data.Messages[0]);
+    throw new Error(`Mailjet delivery failed: ${status}`);
+  }
+
+  console.log(`[MAIL] sent to ${to} via Mailjet ✓`);
 }
 
 async function sendVerificationEmail(toEmail, toName, code) {
