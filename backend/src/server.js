@@ -50,34 +50,37 @@ function adminMiddleware(req, res, next) {
 }
 
 // ─── Mailer (Gmail SMTP) ──────────────────────────────────────────────────────
-const GMAIL_USER = process.env.GMAIL_USER || 'op775t@gmail.com';
-const GMAIL_PASS = process.env.GMAIL_PASS;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 async function sendEmail({ to, subject, html }) {
-  if (!GMAIL_PASS) {
-    console.error(`[MAIL ERROR] GMAIL_PASS not set — cannot send email to ${to}`);
-    throw new Error('GMAIL_PASS not configured');
+  if (!RESEND_API_KEY) {
+    console.error(`[MAIL ERROR] RESEND_API_KEY not set — cannot send email to ${to}`);
+    throw new Error('RESEND_API_KEY not configured');
   }
 
-  console.log(`[MAIL] attempting to send to ${to} via ${GMAIL_USER}`);
+  console.log(`[MAIL] attempting to send to ${to} via Resend`);
 
-  // استخدام nodemailer عبر Gmail SMTP
-  const { createTransport } = await import('nodemailer');
-  const transporter = createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: { user: GMAIL_USER, pass: GMAIL_PASS }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: 'Mr10x <onboarding@resend.dev>',
+      to,
+      subject,
+      html
+    })
   });
 
-  await transporter.sendMail({
-    from: `Mr10x <${GMAIL_USER}>`,
-    to,
-    subject,
-    html
-  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`[MAIL ERROR] Resend responded ${res.status}: ${err}`);
+    throw new Error(`Resend error ${res.status}: ${err}`);
+  }
 
-  console.log(`[MAIL] sent to ${to} ✓`);
+  console.log(`[MAIL] sent to ${to} via Resend ✓`);
 }
 
 async function sendVerificationEmail(toEmail, toName, code) {
