@@ -404,16 +404,8 @@
       <label class="form-label">كلمة المرور / App Password</label>
       <input class="form-input" id="mb-pass" type="password" placeholder="••••••••" />
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">IMAP Host (اختياري)</label>
-        <input class="form-input" id="mb-host" placeholder="يُكتشف تلقائياً" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Port (اختياري)</label>
-        <input class="form-input" id="mb-port" placeholder="993" />
-      </div>
-    </div>
+    <input type="hidden" id="mb-host" value="" />
+    <input type="hidden" id="mb-port" value="" />
     <div class="form-group">
       <label class="form-label">اسم للتعريف (اختياري)</label>
       <input class="form-input" id="mb-label" placeholder="مثال: حساب Netflix الرئيسي" />
