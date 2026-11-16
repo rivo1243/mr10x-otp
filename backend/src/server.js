@@ -16,11 +16,9 @@ app.use(cors());
 app.use(express.json());
 
 // ─── Serve Frontend ───────────────────────────────────────────────────────────
-// الصفحة الرئيسية → landing.html (يجب أن يكون قبل express.static)
 app.get('/', (req, res) => {
   res.sendFile(join(__dirname, '../../frontend/landing.html'));
 });
-
 app.use(express.static(join(__dirname, '../../frontend')));
 
 const PORT = process.env.PORT || 4000;
@@ -29,10 +27,11 @@ const PORT = process.env.PORT || 4000;
 function hashPw(pw) {
   return createHash('sha256').update(pw + (process.env.SECRET || 'mr10x')).digest('hex');
 }
-function authMiddleware(req, res, next) {
+
+async function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  const seller = db.prepare('SELECT * FROM sellers WHERE id = ?').get(token);
+  const seller = await db.prepare('SELECT * FROM sellers WHERE id = ?').get(token);
   if (!seller) return res.status(401).json({ error: 'Invalid token' });
   if (seller.status === 'pending') return res.status(403).json({ error: 'pending' });
   if (seller.status === 'rejected') return res.status(403).json({ error: 'rejected' });
@@ -58,29 +57,16 @@ async function sendEmail({ to, subject, html }) {
     console.log(`[MAIL] no GMAIL_PASS — skipping email to ${to}`);
     return;
   }
-
-  // استخدام nodemailer عبر Gmail SMTP
   const { createTransport } = await import('nodemailer');
   const transporter = createTransport({
     service: 'gmail',
     auth: { user: GMAIL_USER, pass: GMAIL_PASS }
   });
-
-  await transporter.sendMail({
-    from: `Mr10x <${GMAIL_USER}>`,
-    to,
-    subject,
-    html
-  });
-
+  await transporter.sendMail({ from: `Mr10x <${GMAIL_USER}>`, to, subject, html });
   console.log(`[MAIL] sent to ${to} ✓`);
 }
 
 async function sendVerificationEmail(toEmail, toName, code) {
-  if (!RESEND_API_KEY) {
-    console.log(`[MAIL] كود التحقق لـ ${toEmail}: ${code} (RESEND_API_KEY غير مضبوط)`);
-    return;
-  }
   await sendEmail({
     to: toEmail,
     subject: 'كود تأكيد التسجيل في Mr10x',
@@ -99,67 +85,58 @@ async function sendVerificationEmail(toEmail, toName, code) {
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-// POST /api/register — إرسال كود التحقق على الإيميل
 app.post('/api/register', async (req, res) => {
   const { name, email, password, phone } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
-  const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(email.toLowerCase());
+  const existing = await db.prepare('SELECT id FROM sellers WHERE email = ?').get(email.toLowerCase());
   if (existing) return res.status(409).json({ error: 'Email already registered' });
 
-  // توليد كود 6 أرقام
   const code = String(Math.floor(100000 + Math.random() * 900000));
-  const expiresAt = Math.floor(Date.now() / 1000) + 900; // 15 دقيقة
+  const expiresAt = Math.floor(Date.now() / 1000) + 900;
   const verifyId = randomUUID();
 
-  // حذف أي طلبات سابقة لنفس الإيميل
-  db.prepare('DELETE FROM email_verifications WHERE email = ?').run(email.toLowerCase());
-
-  db.prepare('INSERT INTO email_verifications (id, email, code, name, password, phone, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+  await db.prepare('DELETE FROM email_verifications WHERE email = ?').run(email.toLowerCase());
+  await db.prepare('INSERT INTO email_verifications (id, email, code, name, password, phone, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(verifyId, email.toLowerCase(), code, name, hashPw(password), phone || '', expiresAt);
 
   try {
     await sendVerificationEmail(email, name, code);
   } catch (e) {
     console.error('[MAIL ERROR]', e.message);
-    // لا نوقف العملية إذا فشل الإيميل — نكمل
   }
 
   res.json({ verify: true, verifyId });
 });
 
-// POST /api/verify-email — تأكيد الكود وإنشاء الحساب
-app.post('/api/verify-email', (req, res) => {
+app.post('/api/verify-email', async (req, res) => {
   const { verifyId, code } = req.body || {};
   if (!verifyId || !code) return res.status(400).json({ error: 'Missing fields' });
 
-  const record = db.prepare('SELECT * FROM email_verifications WHERE id = ?').get(verifyId);
+  const record = await db.prepare('SELECT * FROM email_verifications WHERE id = ?').get(verifyId);
   if (!record) return res.status(404).json({ error: 'انتهت صلاحية الكود أو غير صحيح' });
   if (record.used) return res.status(400).json({ error: 'تم استخدام هذا الكود مسبقاً' });
   if (record.expires_at < Math.floor(Date.now() / 1000)) {
-    db.prepare('DELETE FROM email_verifications WHERE id = ?').run(verifyId);
+    await db.prepare('DELETE FROM email_verifications WHERE id = ?').run(verifyId);
     return res.status(400).json({ error: 'انتهت صلاحية الكود، أعد التسجيل' });
   }
   if (record.code !== String(code).trim()) {
     return res.status(400).json({ error: 'الكود غير صحيح' });
   }
 
-  // تأكيد ناجح — إنشاء الحساب
-  const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(record.email);
+  const existing = await db.prepare('SELECT id FROM sellers WHERE email = ?').get(record.email);
   if (existing) return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
 
   const sellerId = randomUUID();
-  db.prepare('INSERT INTO sellers (id, name, email, password, phone, status) VALUES (?, ?, ?, ?, ?, ?)')
+  await db.prepare('INSERT INTO sellers (id, name, email, password, phone, status) VALUES (?, ?, ?, ?, ?, ?)')
     .run(sellerId, record.name, record.email, record.password, record.phone, 'pending');
-
-  // وضع علامة مستخدم
-  db.prepare('UPDATE email_verifications SET used = 1 WHERE id = ?').run(verifyId);
+  await db.prepare('UPDATE email_verifications SET used = 1 WHERE id = ?').run(verifyId);
 
   res.json({ pending: true });
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body || {};
-  const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
+  const seller = await db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
   if (!seller || seller.password !== hashPw(password))
     return res.status(401).json({ error: 'Invalid credentials' });
   if (seller.status === 'pending')
@@ -167,24 +144,21 @@ app.post('/api/login', (req, res) => {
   res.json({ token: seller.id, name: seller.name, subscription_expires_at: seller.subscription_expires_at || null });
 });
 
-// POST /api/forgot-password — طلب إعادة تعيين كلمة المرور
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email required' });
-
   console.log(`[forgot-password] request for: ${email}`);
 
-  const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
-  // نرجع نجاح دائماً حتى لا نكشف وجود الإيميل
+  const seller = await db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
   if (!seller) {
     console.log(`[forgot-password] email not found: ${email}`);
     return res.json({ ok: true });
   }
 
   const token = randomUUID().replace(/-/g, '');
-  const expiresAt = Math.floor(Date.now() / 1000) + 60 * 30; // 30 دقيقة
+  const expiresAt = Math.floor(Date.now() / 1000) + 60 * 30;
 
-  db.prepare('INSERT INTO password_resets (id, email, token, expires_at) VALUES (?, ?, ?, ?)')
+  await db.prepare('INSERT INTO password_resets (id, email, token, expires_at) VALUES (?, ?, ?, ?)')
     .run(randomUUID(), seller.email, token, expiresAt);
 
   const BASE_URL = process.env.BASE_URL || 'https://mr10x-otp-production.up.railway.app';
@@ -212,81 +186,82 @@ app.post('/api/forgot-password', async (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/reset-password — تعيين كلمة مرور جديدة
-app.post('/api/reset-password', (req, res) => {
+app.post('/api/reset-password', async (req, res) => {
   const { token, password } = req.body || {};
   if (!token || !password) return res.status(400).json({ error: 'Missing fields' });
   if (password.length < 6) return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
 
-  const record = db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > ?')
+  const record = await db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > ?')
     .get(token, Math.floor(Date.now() / 1000));
 
   if (!record) return res.status(400).json({ error: 'الرابط غير صالح أو منتهي الصلاحية' });
 
-  db.prepare('UPDATE sellers SET password = ? WHERE email = ?')
-    .run(hashPw(password), record.email);
-  db.prepare('UPDATE password_resets SET used = 1 WHERE token = ?')
-    .run(token);
+  await db.prepare('UPDATE sellers SET password = ? WHERE email = ?').run(hashPw(password), record.email);
+  await db.prepare('UPDATE password_resets SET used = 1 WHERE token = ?').run(token);
 
   res.json({ ok: true });
 });
 
-// GET /api/me — بيانات الحساب الحالي
-app.get('/api/me', authMiddleware, (req, res) => {
-  const seller = db.prepare('SELECT id, name, email, phone, status, subscription_expires_at FROM sellers WHERE id = ?').get(req.seller.id);
+app.get('/api/me', authMiddleware, async (req, res) => {
+  const seller = await db.prepare('SELECT id, name, email, phone, status, subscription_expires_at FROM sellers WHERE id = ?').get(req.seller.id);
   res.json(seller);
 });
 
 // ─── Admin API ────────────────────────────────────────────────────────────────
-// GET /api/admin/sellers — قائمة البائعين
-app.get('/api/admin/sellers', adminMiddleware, (req, res) => {
-  const sellers = db.prepare('SELECT id, name, email, phone, status, created_at, subscription_expires_at FROM sellers ORDER BY created_at DESC').all();
+app.get('/api/admin/sellers', adminMiddleware, async (req, res) => {
+  const sellers = await db.prepare('SELECT id, name, email, phone, status, created_at, subscription_expires_at FROM sellers ORDER BY created_at DESC').all();
   res.json(sellers);
 });
 
-// PATCH /api/admin/sellers/:id/approve — قبول بائع
-app.patch('/api/admin/sellers/:id/approve', adminMiddleware, (req, res) => {
-  db.prepare('UPDATE sellers SET status = ? WHERE id = ?').run('active', req.params.id);
+app.patch('/api/admin/sellers/:id/approve', adminMiddleware, async (req, res) => {
+  await db.prepare('UPDATE sellers SET status = ? WHERE id = ?').run('active', req.params.id);
   res.json({ ok: true });
 });
 
-// PATCH /api/admin/sellers/:id/reject — رفض / تعليق بائع
-app.patch('/api/admin/sellers/:id/reject', adminMiddleware, (req, res) => {
-  db.prepare('UPDATE sellers SET status = ? WHERE id = ?').run('rejected', req.params.id);
+app.patch('/api/admin/sellers/:id/reject', adminMiddleware, async (req, res) => {
+  await db.prepare('UPDATE sellers SET status = ? WHERE id = ?').run('rejected', req.params.id);
   res.json({ ok: true });
 });
 
-// DELETE /api/admin/sellers/:id — حذف بائع
-app.delete('/api/admin/sellers/:id', adminMiddleware, (req, res) => {
-  db.prepare('DELETE FROM sellers WHERE id = ?').run(req.params.id);
+app.delete('/api/admin/sellers/:id', adminMiddleware, async (req, res) => {
+  await db.prepare('DELETE FROM sellers WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
-// PATCH /api/admin/sellers/:id/subscription — تعيين تاريخ انتهاء الاشتراك
-app.patch('/api/admin/sellers/:id/subscription', adminMiddleware, (req, res) => {
+app.patch('/api/admin/sellers/:id/subscription', adminMiddleware, async (req, res) => {
   const { expires_at } = req.body || {};
   const ts = expires_at ? Math.floor(new Date(expires_at).getTime() / 1000) : null;
-  db.prepare('UPDATE sellers SET subscription_expires_at = ? WHERE id = ?').run(ts, req.params.id);
+  await db.prepare('UPDATE sellers SET subscription_expires_at = ? WHERE id = ?').run(ts, req.params.id);
   res.json({ ok: true });
 });
 
-// GET /api/admin/stats — إحصائيات عامة للأدمن
-app.get('/api/admin/stats', adminMiddleware, (req, res) => {
-  const totalSellers     = db.prepare("SELECT COUNT(*) as n FROM sellers").get().n;
-  const activeSellers    = db.prepare("SELECT COUNT(*) as n FROM sellers WHERE status = 'active'").get().n;
-  const pendingSellers   = db.prepare("SELECT COUNT(*) as n FROM sellers WHERE status = 'pending'").get().n;
-  const totalMailboxes   = db.prepare("SELECT COUNT(*) as n FROM mailboxes").get().n;
-  const totalSlots       = db.prepare("SELECT COUNT(*) as n FROM slots").get().n;
-  const totalCodes       = db.prepare("SELECT COUNT(*) as n FROM codes").get().n;
-  const codesViewed      = db.prepare("SELECT COUNT(*) as n FROM codes WHERE viewed = 1").get().n;
-  const now              = Math.floor(Date.now() / 1000);
-  const activeSubs       = db.prepare("SELECT COUNT(*) as n FROM sellers WHERE subscription_expires_at IS NOT NULL AND subscription_expires_at > ?").get(now).n;
+app.get('/api/admin/stats', adminMiddleware, async (req, res) => {
+  const now = Math.floor(Date.now() / 1000);
+  const [
+    { n: totalSellers },
+    { n: activeSellers },
+    { n: pendingSellers },
+    { n: totalMailboxes },
+    { n: totalSlots },
+    { n: totalCodes },
+    { n: codesViewed },
+    { n: activeSubs }
+  ] = await Promise.all([
+    db.prepare("SELECT COUNT(*) as n FROM sellers").get(),
+    db.prepare("SELECT COUNT(*) as n FROM sellers WHERE status = 'active'").get(),
+    db.prepare("SELECT COUNT(*) as n FROM sellers WHERE status = 'pending'").get(),
+    db.prepare("SELECT COUNT(*) as n FROM mailboxes").get(),
+    db.prepare("SELECT COUNT(*) as n FROM slots").get(),
+    db.prepare("SELECT COUNT(*) as n FROM codes").get(),
+    db.prepare("SELECT COUNT(*) as n FROM codes WHERE viewed = 1").get(),
+    db.prepare("SELECT COUNT(*) as n FROM sellers WHERE subscription_expires_at IS NOT NULL AND subscription_expires_at > ?").get(now)
+  ]);
   res.json({ totalSellers, activeSellers, pendingSellers, totalMailboxes, totalSlots, totalCodes, codesViewed, activeSubs });
 });
 
 // ─── Mailboxes ─────────────────────────────────────────────────────────────────
-app.get('/api/mailboxes', authMiddleware, (req, res) => {
-  const rows = db.prepare('SELECT id, email, imap_host, imap_port, label, status, last_sync, last_error FROM mailboxes WHERE seller_id = ?')
+app.get('/api/mailboxes', authMiddleware, async (req, res) => {
+  const rows = await db.prepare('SELECT id, email, imap_host, imap_port, label, status, last_sync, last_error FROM mailboxes WHERE seller_id = ?')
     .all(req.seller.id);
   res.json(rows);
 });
@@ -294,9 +269,8 @@ app.get('/api/mailboxes', authMiddleware, (req, res) => {
 app.post('/api/mailboxes', authMiddleware, async (req, res) => {
   const { email, password, host, port, label } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-  // حد خفي: 500 صندوق بريد لكل بائع
-  const mailboxCount = db.prepare('SELECT COUNT(*) as cnt FROM mailboxes WHERE seller_id = ?').get(req.seller.id);
-  if (mailboxCount.cnt >= 500) return res.status(400).json({ error: 'تعذّر إضافة صندوق البريد، يرجى التواصل مع الدعم.' });
+  const mailboxCount = await db.prepare('SELECT COUNT(*) as cnt FROM mailboxes WHERE seller_id = ?').get(req.seller.id);
+  if (Number(mailboxCount.cnt) >= 500) return res.status(400).json({ error: 'تعذّر إضافة صندوق البريد، يرجى التواصل مع الدعم.' });
   const imapHost = host || guessHost(email);
   const imapPort = Number(port) || 993;
   try {
@@ -320,20 +294,19 @@ app.post('/api/mailboxes', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: arabicError });
   }
   const id = randomUUID();
-  db.prepare(`INSERT INTO mailboxes (id, seller_id, email, imap_host, imap_port, password, label)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`)
+  await db.prepare(`INSERT INTO mailboxes (id, seller_id, email, imap_host, imap_port, password, label) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .run(id, req.seller.id, email.toLowerCase(), imapHost, imapPort, password, label || '');
   res.json({ id, email, imap_host: imapHost, status: 'connected' });
 });
 
-app.delete('/api/mailboxes/:id', authMiddleware, (req, res) => {
-  db.prepare('DELETE FROM mailboxes WHERE id = ? AND seller_id = ?').run(req.params.id, req.seller.id);
+app.delete('/api/mailboxes/:id', authMiddleware, async (req, res) => {
+  await db.prepare('DELETE FROM mailboxes WHERE id = ? AND seller_id = ?').run(req.params.id, req.seller.id);
   res.json({ ok: true });
 });
 
 // ─── Slots ────────────────────────────────────────────────────────────────────
-app.get('/api/slots', authMiddleware, (req, res) => {
-  const rows = db.prepare(`
+app.get('/api/slots', authMiddleware, async (req, res) => {
+  const rows = await db.prepare(`
     SELECT s.id, s.label, s.token, s.mailbox_id, s.created_at,
            s.account_email,
            m.email as mailbox_email,
@@ -344,10 +317,10 @@ app.get('/api/slots', authMiddleware, (req, res) => {
   res.json(rows);
 });
 
-app.post('/api/slots', authMiddleware, (req, res) => {
+app.post('/api/slots', authMiddleware, async (req, res) => {
   const { mailbox_id, label, count = 1, account_email = '', account_password = '' } = req.body || {};
   if (!mailbox_id || !label) return res.status(400).json({ error: 'mailbox_id and label required' });
-  const mailbox = db.prepare('SELECT id FROM mailboxes WHERE id = ? AND seller_id = ?').get(mailbox_id, req.seller.id);
+  const mailbox = await db.prepare('SELECT id FROM mailboxes WHERE id = ? AND seller_id = ?').get(mailbox_id, req.seller.id);
   if (!mailbox) return res.status(404).json({ error: 'Mailbox not found' });
 
   const created = [];
@@ -355,35 +328,34 @@ app.post('/api/slots', authMiddleware, (req, res) => {
   for (let i = 0; i < n; i++) {
     const id = randomUUID();
     const token = randomUUID().replace(/-/g, '');
-    db.prepare('INSERT INTO slots (id, seller_id, mailbox_id, label, token, account_email, account_password) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    await db.prepare('INSERT INTO slots (id, seller_id, mailbox_id, label, token, account_email, account_password) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(id, req.seller.id, mailbox_id, label, token, account_email, account_password);
     created.push({ id, token, label, account_email });
   }
   res.json(created);
 });
 
-app.patch('/api/slots/:id', authMiddleware, (req, res) => {
+app.patch('/api/slots/:id', authMiddleware, async (req, res) => {
   const { account_email, account_password, label } = req.body || {};
-  const slot = db.prepare('SELECT id FROM slots WHERE id = ? AND seller_id = ?').get(req.params.id, req.seller.id);
+  const slot = await db.prepare('SELECT id FROM slots WHERE id = ? AND seller_id = ?').get(req.params.id, req.seller.id);
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   if (account_email !== undefined)
-    db.prepare('UPDATE slots SET account_email = ? WHERE id = ?').run(account_email, req.params.id);
+    await db.prepare('UPDATE slots SET account_email = ? WHERE id = ?').run(account_email, req.params.id);
   if (account_password !== undefined)
-    db.prepare('UPDATE slots SET account_password = ? WHERE id = ?').run(account_password, req.params.id);
+    await db.prepare('UPDATE slots SET account_password = ? WHERE id = ?').run(account_password, req.params.id);
   if (label !== undefined)
-    db.prepare('UPDATE slots SET label = ? WHERE id = ?').run(label, req.params.id);
+    await db.prepare('UPDATE slots SET label = ? WHERE id = ?').run(label, req.params.id);
   res.json({ ok: true });
 });
 
-app.delete('/api/slots/:id', authMiddleware, (req, res) => {
-  db.prepare('DELETE FROM slots WHERE id = ? AND seller_id = ?').run(req.params.id, req.seller.id);
+app.delete('/api/slots/:id', authMiddleware, async (req, res) => {
+  await db.prepare('DELETE FROM slots WHERE id = ? AND seller_id = ?').run(req.params.id, req.seller.id);
   res.json({ ok: true });
 });
 
 // ─── Customer endpoint (public) ───────────────────────────────────────────────
-// GET /api/slot/:token — بيانات السلوت (الإيميل + الباسورد + الحالة)
-app.get('/api/slot/:token', (req, res) => {
-  const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
+app.get('/api/slot/:token', async (req, res) => {
+  const slot = await db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
   res.json({
     label: slot.label,
@@ -393,12 +365,10 @@ app.get('/api/slot/:token', (req, res) => {
   });
 });
 
-// GET /api/code/:token — جلب آخر كود (عند الضغط على الزر)
-app.get('/api/code/:token', (req, res) => {
-  const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
+app.get('/api/code/:token', async (req, res) => {
+  const slot = await db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
 
-  // التحقق من حد المحاولات (2 محاولة فقط)
   const attempts = slot.code_attempts || 0;
   if (attempts >= 2) {
     return res.json({
@@ -409,7 +379,7 @@ app.get('/api/code/:token', (req, res) => {
     });
   }
 
-  const code = db.prepare(`
+  const code = await db.prepare(`
     SELECT code, received_at, expires_at FROM codes
     WHERE slot_id = ? AND expires_at > ?
     ORDER BY received_at DESC LIMIT 1`)
@@ -417,9 +387,8 @@ app.get('/api/code/:token', (req, res) => {
 
   if (!code) return res.json({ status: 'waiting', label: slot.label });
 
-  // زيادة عداد المحاولات + وضع علامة شُوهد
-  db.prepare('UPDATE slots SET code_attempts = code_attempts + 1 WHERE id = ?').run(slot.id);
-  db.prepare('UPDATE codes SET viewed = 1 WHERE slot_id = ? AND code = ?').run(slot.id, code.code);
+  await db.prepare('UPDATE slots SET code_attempts = code_attempts + 1 WHERE id = ?').run(slot.id);
+  await db.prepare('UPDATE codes SET viewed = 1 WHERE slot_id = ? AND code = ?').run(slot.id, code.code);
 
   res.json({
     status: 'ready',
@@ -431,9 +400,8 @@ app.get('/api/code/:token', (req, res) => {
 });
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
-pollAll(); // يبدأ connections IDLE الفورية
+pollAll();
 
 app.listen(PORT, () => {
   console.log(`Mr10x OTP Backend running on port ${PORT}`);
 });
-
