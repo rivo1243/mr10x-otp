@@ -23,23 +23,23 @@ function extractText(msg) {
 }
 
 // ── معالجة رسالة واحدة وإدراج الكود لو وُجد ─────────────────────────────
-async function processMsg(mailbox, msg) {
+function processMsg(mailbox, msg) {
   const code = extractCode(msg.subject, msg.body);
   if (!code) return;
 
-  const slots = await db.prepare(
+  const slots = db.prepare(
     'SELECT * FROM slots WHERE mailbox_id = ? AND seller_id = ?'
   ).all(mailbox.id, mailbox.seller_id);
 
   const receivedTs = Math.floor(msg.received.getTime() / 1000);
 
   for (const slot of slots) {
-    const exists = await db.prepare(
+    const exists = db.prepare(
       'SELECT id FROM codes WHERE slot_id = ? AND code = ? AND received_at = ?'
     ).get(slot.id, code, receivedTs);
     if (exists) continue;
 
-    await db.prepare(`
+    db.prepare(`
       INSERT INTO codes (id, slot_id, code, email_from, email_subj, received_at, expires_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
@@ -72,9 +72,8 @@ async function connectMailbox(mailbox) {
 
   client.on('error', (err) => {
     console.error(`[IMAP] خطأ ${mailbox.email}:`, err.message);
-    // fire-and-forget — event handlers can't be async
     db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
-      .run(String(err.message).slice(0, 200), mailbox.id).catch(() => {});
+      .run(String(err.message).slice(0, 200), mailbox.id);
     liveConns.delete(mailbox.id);
     // إعادة المحاولة بعد 15 ثانية
     setTimeout(() => connectMailbox(mailbox), 15_000);
@@ -86,7 +85,7 @@ async function connectMailbox(mailbox) {
     // جلب الرسائل اللي وصلت في آخر 5 دقائق عند الاتصال الأول
     await initialFetch(client, mailbox);
 
-    await db.prepare("UPDATE mailboxes SET status = 'connected', last_error = NULL WHERE id = ?")
+    db.prepare("UPDATE mailboxes SET status = 'connected', last_error = NULL WHERE id = ?")
       .run(mailbox.id);
 
     console.log(`[IMAP] ✅ متصل ${mailbox.email} — IDLE فعّال`);
@@ -96,7 +95,7 @@ async function connectMailbox(mailbox) {
 
   } catch (err) {
     console.error(`[IMAP] فشل الاتصال ${mailbox.email}:`, err.message);
-    await db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
+    db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
       .run(String(err.message).slice(0, 200), mailbox.id);
     liveConns.delete(mailbox.id);
     setTimeout(() => connectMailbox(mailbox), 30_000);
@@ -120,7 +119,7 @@ async function initialFetch(client, mailbox) {
     )) {
       const received = msg.envelope?.date ? new Date(msg.envelope.date) : new Date();
       if (received < since) continue;
-      await processMsg(mailbox, {
+      processMsg(mailbox, {
         uid: String(msg.uid),
         received,
         subject: msg.envelope?.subject || '',
@@ -129,7 +128,7 @@ async function initialFetch(client, mailbox) {
       });
     }
 
-    await db.prepare('UPDATE mailboxes SET last_sync = ? WHERE id = ?')
+    db.prepare('UPDATE mailboxes SET last_sync = ? WHERE id = ?')
       .run(Math.floor(Date.now() / 1000), mailbox.id);
   } finally {
     lock.release();
@@ -167,7 +166,7 @@ async function idleLoop(client, mailbox) {
           )) {
             const received = msg.envelope?.date ? new Date(msg.envelope.date) : new Date();
             if (received < since) continue;
-            await processMsg(mailbox, {
+            processMsg(mailbox, {
               uid: String(msg.uid),
               received,
               subject: msg.envelope?.subject || '',
@@ -179,7 +178,7 @@ async function idleLoop(client, mailbox) {
 
         // تحديث last_sync وإعادة قراءة الصف
         const now = Math.floor(Date.now() / 1000);
-        await db.prepare('UPDATE mailboxes SET last_sync = ?, status = ?, last_error = NULL WHERE id = ?')
+        db.prepare('UPDATE mailboxes SET last_sync = ?, status = ?, last_error = NULL WHERE id = ?')
           .run(now, 'connected', mailbox.id);
         mailbox.last_sync = now;
 
@@ -190,7 +189,7 @@ async function idleLoop(client, mailbox) {
     } catch (err) {
       if (liveConns.has(mailbox.id)) {
         console.error(`[IMAP] IDLE انقطع ${mailbox.email}:`, err.message);
-        await db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
+        db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
           .run(String(err.message).slice(0, 200), mailbox.id);
         liveConns.delete(mailbox.id);
         setTimeout(() => connectMailbox(mailbox), 10_000);
@@ -202,7 +201,7 @@ async function idleLoop(client, mailbox) {
 
 // ── مزامنة قائمة الصناديق كل 30 ثانية (ربط جديد / حذف) ──────────────────
 async function syncMailboxList() {
-  const mailboxes = await db.prepare(
+  const mailboxes = db.prepare(
     "SELECT * FROM mailboxes WHERE status != 'disconnected'"
   ).all();
 
@@ -224,7 +223,7 @@ async function syncMailboxList() {
   }
 
   // تنظيف الأكواد المنتهية
-  await db.prepare('DELETE FROM codes WHERE expires_at < ?')
+  db.prepare('DELETE FROM codes WHERE expires_at < ?')
     .run(Math.floor(Date.now() / 1000) - 3600);
 }
 
