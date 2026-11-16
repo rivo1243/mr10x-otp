@@ -55,14 +55,18 @@ const GMAIL_PASS = process.env.GMAIL_PASS;
 
 async function sendEmail({ to, subject, html }) {
   if (!GMAIL_PASS) {
-    console.log(`[MAIL] no GMAIL_PASS — skipping email to ${to}`);
-    return;
+    console.error(`[MAIL ERROR] GMAIL_PASS not set — cannot send email to ${to}`);
+    throw new Error('GMAIL_PASS not configured');
   }
+
+  console.log(`[MAIL] attempting to send to ${to} via ${GMAIL_USER}`);
 
   // استخدام nodemailer عبر Gmail SMTP
   const { createTransport } = await import('nodemailer');
   const transporter = createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: { user: GMAIL_USER, pass: GMAIL_PASS }
   });
 
@@ -77,10 +81,6 @@ async function sendEmail({ to, subject, html }) {
 }
 
 async function sendVerificationEmail(toEmail, toName, code) {
-  if (!RESEND_API_KEY) {
-    console.log(`[MAIL] كود التحقق لـ ${toEmail}: ${code} (RESEND_API_KEY غير مضبوط)`);
-    return;
-  }
   await sendEmail({
     to: toEmail,
     subject: 'كود تأكيد التسجيل في Mr10x',
