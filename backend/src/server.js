@@ -394,6 +394,13 @@ app.patch('/api/slots/:id', authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
+app.patch('/api/slots/:id/reset', authMiddleware, (req, res) => {
+  const slot = db.prepare('SELECT id FROM slots WHERE id = ? AND seller_id = ?').get(req.params.id, req.seller.id);
+  if (!slot) return res.status(404).json({ error: 'Slot not found' });
+  db.prepare('UPDATE slots SET code_attempts = 0 WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
 app.delete('/api/slots/:id', authMiddleware, (req, res) => {
   db.prepare('DELETE FROM slots WHERE id = ? AND seller_id = ?').run(req.params.id, req.seller.id);
   res.json({ ok: true });

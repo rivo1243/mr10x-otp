@@ -122,6 +122,13 @@
     font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.2s;
   }
   .btn-danger:hover { background: rgba(239,68,68,0.08); }
+  .btn-edit {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 7px 10px; border-radius: 8px;
+    background: transparent; color: var(--muted); border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-edit:hover { border-color: var(--accent); color: var(--accent); }
 
   /* ── Stats row ── */
   .stats-row {
@@ -391,6 +398,39 @@
   </div>
 </div>
 
+<!-- ══ MODAL: Edit Slot ══ -->
+<div class="modal-overlay" id="edit-slot-modal">
+  <div class="modal">
+    <div class="modal-title">✏️ تعديل الرابط</div>
+
+    <div class="form-group">
+      <label class="form-label">اسم الخدمة</label>
+      <input class="form-input" id="edit-slot-label" placeholder="مثال: Netflix Premium" />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">إيميل الحساب</label>
+        <input class="form-input" id="edit-slot-email" placeholder="user@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">كلمة مرور الحساب</label>
+        <input class="form-input" id="edit-slot-pass" type="password" placeholder="••••••••" />
+      </div>
+    </div>
+
+    <div id="edit-slot-err" style="color:var(--red);font-size:13px;margin-top:4px;display:none;"></div>
+
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn-secondary" id="edit-reset-btn" onclick="resetSlotAttempts()" style="font-size:12px;padding:7px 12px;">↺ إعادة ضبط المحاولات</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-cancel" onclick="closeEditModal()">إلغاء</button>
+        <button class="btn-primary" id="edit-submit-btn" onclick="updateSlot()">حفظ التعديلات</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: New Mailbox ══ -->
 <div class="modal-overlay" id="mailbox-modal">
   <div class="modal">
@@ -532,6 +572,9 @@ function renderSlots(slots) {
       <div class="slot-attempts ${attClass}">${attLabel}</div>
       <div class="slot-actions">
         <button class="slot-link-btn" onclick="showLink('${s.token}')">عرض الرابط</button>
+        <button class="btn-edit" title="تعديل" onclick="openEditSlot('${s.id}')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
         <button class="btn-danger" onclick="deleteSlot('${s.id}', '${escHtml(s.label)}')">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M3 6h18M19 6l-1 14H6L5 6M9 6V4h6v2"/></svg>
         </button>
@@ -640,6 +683,71 @@ function copyPopupLink() {
     showToast('تم نسخ الرابط ✓');
     closeLinkPopup();
   });
+}
+
+// ── Edit slot ──────────────────────────────────────────────────────────────
+let editingSlotId = null;
+
+function openEditSlot(id) {
+  const slot = slotsCache.find(s => s.id === id);
+  if (!slot) return;
+  editingSlotId = id;
+  document.getElementById('edit-slot-label').value = slot.label || '';
+  document.getElementById('edit-slot-email').value = slot.account_email || '';
+  document.getElementById('edit-slot-pass').value = '';
+  document.getElementById('edit-slot-err').style.display = 'none';
+  // إظهار زر reset فقط إذا كانت المحاولات منتهية
+  const attempts = typeof slot.code_attempts === 'number' ? slot.code_attempts : 0;
+  document.getElementById('edit-reset-btn').style.display = attempts >= 2 ? '' : 'none';
+  document.getElementById('edit-slot-modal').classList.add('open');
+  setTimeout(() => document.getElementById('edit-slot-email').focus(), 100);
+}
+function closeEditModal() { document.getElementById('edit-slot-modal').classList.remove('open'); editingSlotId = null; }
+
+async function updateSlot() {
+  if (!editingSlotId) return;
+  const label = document.getElementById('edit-slot-label').value.trim();
+  const account_email = document.getElementById('edit-slot-email').value.trim();
+  const account_password = document.getElementById('edit-slot-pass').value;
+  const errEl = document.getElementById('edit-slot-err');
+
+  if (!label) { showErr(errEl, 'اكتب اسم الخدمة'); return; }
+
+  const btn = document.getElementById('edit-submit-btn');
+  btn.textContent = 'جارٍ الحفظ...'; btn.disabled = true;
+  errEl.style.display = 'none';
+
+  const body = { label, account_email };
+  if (account_password) body.account_password = account_password;
+
+  try {
+    const r = await apiFetch(`/api/slots/${editingSlotId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { showErr(errEl, 'فشل الحفظ'); return; }
+    closeEditModal();
+    showToast('✅ تم حفظ التعديلات');
+    loadSlots();
+  } catch(e) {
+    showErr(errEl, 'خطأ في الاتصال');
+  } finally {
+    btn.textContent = 'حفظ التعديلات'; btn.disabled = false;
+  }
+}
+
+async function resetSlotAttempts() {
+  if (!editingSlotId) return;
+  const btn = document.getElementById('edit-reset-btn');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const r = await apiFetch(`/api/slots/${editingSlotId}/reset`, { method: 'PATCH' });
+    if (!r.ok) { showToast('فشل الإعادة', 'error'); return; }
+    showToast('✅ تم إعادة ضبط المحاولات');
+    btn.style.display = 'none';
+    loadSlots();
+  } catch(e) { showToast('خطأ', 'error'); }
+  finally { btn.textContent = '↺ إعادة ضبط المحاولات'; btn.disabled = false; }
 }
 
 // ── Delete slot ────────────────────────────────────────────────────────────
