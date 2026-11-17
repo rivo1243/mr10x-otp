@@ -71,12 +71,11 @@ async function connectMailbox(mailbox) {
   liveConns.set(mailbox.id, { client, busy: false });
 
   client.on('error', (err) => {
-    console.error(`[IMAP] خطأ ${mailbox.email}:`, err.message);
     db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
       .run(String(err.message).slice(0, 200), mailbox.id);
     liveConns.delete(mailbox.id);
-    // إعادة المحاولة بعد 15 ثانية
-    setTimeout(() => connectMailbox(mailbox), 15_000);
+    // إعادة المحاولة بعد 10 دقائق فقط — لتجنب فيضان اللوقات
+    setTimeout(() => connectMailbox(mailbox), 10 * 60_000);
   });
 
   try {
@@ -94,11 +93,11 @@ async function connectMailbox(mailbox) {
     idleLoop(client, mailbox);
 
   } catch (err) {
-    console.error(`[IMAP] فشل الاتصال ${mailbox.email}:`, err.message);
     db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
       .run(String(err.message).slice(0, 200), mailbox.id);
     liveConns.delete(mailbox.id);
-    setTimeout(() => connectMailbox(mailbox), 30_000);
+    // إعادة المحاولة بعد 10 دقائق فقط
+    setTimeout(() => connectMailbox(mailbox), 10 * 60_000);
   }
 }
 
