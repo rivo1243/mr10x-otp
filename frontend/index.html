@@ -545,6 +545,7 @@ let isRegister = false;
 let pendingVerifyId = null;
 let pendingFormData = null; // بيانات التسجيل لإعادة الإرسال
 let resendCountdownTimer = null;
+let isSubmitting = false; // منع الإرسال المزدوج
 
 function toast(msg, duration = 2500) {
   const t = document.getElementById('toast');
@@ -573,6 +574,9 @@ function toggleAuthMode() {
 }
 
 async function submitAuth() {
+  if (isSubmitting) return; // منع الضغط المزدوج
+  isSubmitting = true;
+
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const name = document.getElementById('auth-name').value.trim();
@@ -632,6 +636,8 @@ async function submitAuth() {
   } catch(e) {
     errEl.textContent = 'تعذر الاتصال بالسيرفر';
     errEl.style.display = 'block';
+  } finally {
+    isSubmitting = false; // دايمًا نفتح الباب بعد ما ينتهي الطلب
   }
 }
 
@@ -650,10 +656,13 @@ function setPendingWaLink() {
 }
 
 async function confirmVerify() {
+  if (isSubmitting) return; // منع الضغط المزدوج على زر التأكيد
+  isSubmitting = true;
+
   const code = document.getElementById('verify-code-input').value.trim();
   const errEl = document.getElementById('verify-err');
   errEl.style.display = 'none';
-  if (!code || !pendingVerifyId) return;
+  if (!code || !pendingVerifyId) { isSubmitting = false; return; }
 
   try {
     const r = await fetch(API + '/api/verify-email', {
@@ -682,12 +691,15 @@ async function confirmVerify() {
   } catch(e) {
     errEl.textContent = 'تعذر الاتصال بالسيرفر';
     errEl.style.display = 'block';
+  } finally {
+    isSubmitting = false;
   }
 }
 
 function backToRegister() {
   pendingVerifyId = null;
   pendingFormData = null;
+  isSubmitting = false; // reset في حالة رجع للنموذج
   clearInterval(resendCountdownTimer);
   document.getElementById('verify-box').style.display = 'none';
   document.getElementById('verify-code-input').value = '';
