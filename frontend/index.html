@@ -344,6 +344,18 @@
       </div>
       <div id="verify-err" class="error-msg" style="display:none; text-align:right"></div>
       <button class="btn btn-primary" style="width:100%;padding:12px" onclick="confirmVerify()">تأكيد</button>
+
+      <!-- زر إعادة الإرسال مع العداد -->
+      <div style="margin-top:16px">
+        <button id="resend-btn" onclick="resendCode()"
+          disabled
+          style="background:none;border:1px solid var(--border);color:var(--muted);cursor:not-allowed;
+                 padding:9px 20px;border-radius:8px;font-size:13px;font-family:inherit;
+                 width:100%;transition:all 0.2s;line-height:1.4">
+          <span id="resend-text">إعادة إرسال الكود خلال <span id="resend-timer">60</span> ثانية</span>
+        </button>
+      </div>
+
       <button onclick="backToRegister()"
         style="background:none;border:none;color:var(--muted);cursor:pointer;margin-top:12px;font-size:13px;font-family:inherit">
         ← تعديل البيانات
@@ -530,6 +542,8 @@ const API = window.MR10X_API || 'https://mr10x-otp-production.up.railway.app';
 let TOKEN = localStorage.getItem('mr10x_token');
 let isRegister = false;
 let pendingVerifyId = null;
+let pendingFormData = null; // بيانات التسجيل لإعادة الإرسال
+let resendCountdownTimer = null;
 
 function toast(msg, duration = 2500) {
   const t = document.getElementById('toast');
@@ -579,9 +593,11 @@ async function submitAuth() {
     // ── كود التحقق مطلوب ──
     if (data.verify) {
       pendingVerifyId = data.verifyId;
+      pendingFormData = { name, email, password, phone }; // حفظ البيانات لإعادة الإرسال
       document.getElementById('auth-form-content').style.display = 'none';
       document.getElementById('verify-box').style.display = 'block';
       document.getElementById('verify-code-input').focus();
+      startResendCountdown();
       return;
     }
 
@@ -670,10 +686,78 @@ async function confirmVerify() {
 
 function backToRegister() {
   pendingVerifyId = null;
+  pendingFormData = null;
+  clearInterval(resendCountdownTimer);
   document.getElementById('verify-box').style.display = 'none';
   document.getElementById('verify-code-input').value = '';
   document.getElementById('verify-err').style.display = 'none';
   document.getElementById('auth-form-content').style.display = 'block';
+}
+
+function startResendCountdown(seconds = 60) {
+  clearInterval(resendCountdownTimer);
+  const btn = document.getElementById('resend-btn');
+  const timerEl = document.getElementById('resend-timer');
+  const textEl = document.getElementById('resend-text');
+
+  let remaining = seconds;
+  btn.disabled = true;
+  btn.style.cursor = 'not-allowed';
+  btn.style.color = 'var(--muted)';
+  btn.style.borderColor = 'var(--border)';
+  timerEl.textContent = remaining;
+  textEl.innerHTML = `إعادة إرسال الكود خلال <span id="resend-timer">${remaining}</span> ثانية`;
+
+  resendCountdownTimer = setInterval(() => {
+    remaining--;
+    const t = document.getElementById('resend-timer');
+    if (t) t.textContent = remaining;
+
+    if (remaining <= 0) {
+      clearInterval(resendCountdownTimer);
+      btn.disabled = false;
+      btn.style.cursor = 'pointer';
+      btn.style.color = 'var(--accent2)';
+      btn.style.borderColor = 'rgba(168,85,247,0.4)';
+      document.getElementById('resend-text').textContent = 'إعادة إرسال الكود';
+    }
+  }, 1000);
+}
+
+async function resendCode() {
+  if (!pendingFormData) return;
+  const btn = document.getElementById('resend-btn');
+  const errEl = document.getElementById('verify-err');
+  errEl.style.display = 'none';
+
+  btn.disabled = true;
+  btn.style.cursor = 'not-allowed';
+  document.getElementById('resend-text').textContent = 'جاري الإرسال...';
+
+  try {
+    const r = await fetch(API + '/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pendingFormData)
+    });
+    const data = await r.json();
+
+    if (data.verify) {
+      pendingVerifyId = data.verifyId;
+      document.getElementById('verify-code-input').value = '';
+      startResendCountdown();
+      return;
+    }
+
+    // إذا رجع خطأ
+    errEl.textContent = data.error || 'تعذر إعادة الإرسال';
+    errEl.style.display = 'block';
+    startResendCountdown(30); // إعادة عداد أقصر عند الخطأ
+  } catch(e) {
+    errEl.textContent = 'تعذر الاتصال بالسيرفر';
+    errEl.style.display = 'block';
+    startResendCountdown(30);
+  }
 }
 
 function logout() {
