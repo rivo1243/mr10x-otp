@@ -21,6 +21,11 @@ app.get('/', (req, res) => {
   res.sendFile(join(__dirname, '../../frontend/landing.html'));
 });
 
+// رابط مختصر للأدمن
+app.get('/admin', (req, res) => {
+  res.redirect('/admin.html');
+});
+
 app.use(express.static(join(__dirname, '../../frontend')));
 
 const PORT = process.env.PORT || 4000;
