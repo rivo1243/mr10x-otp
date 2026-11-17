@@ -52,7 +52,7 @@ function adminMiddleware(req, res, next) {
 // ─── Mailer (Mailjet API) ─────────────────────────────────────────────────────
 const MAILJET_API_KEY    = process.env.MAILJET_API_KEY;
 const MAILJET_SECRET_KEY = process.env.MAILJET_SECRET_KEY;
-const MAILJET_FROM_EMAIL = process.env.MAILJET_FROM_EMAIL || 'for.evrything.mjeed@gmail.com';
+const MAILJET_FROM_EMAIL = process.env.MAILJET_FROM_EMAIL || 'x100mr10xmr10x@gmail.com';
 const MAILJET_FROM_NAME  = 'Mr10x';
 
 async function sendEmail({ to, subject, html }) {
