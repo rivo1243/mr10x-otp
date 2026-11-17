@@ -916,9 +916,18 @@ async function confirmDelete() {
 
 // ── تحقق تلقائي من الجلسة ──
 (function init() {
-  const saved = sessionStorage.getItem('mr10x_admin_pass');
-  if (saved) {
-    document.getElementById('admin-pass').value = saved;
+  // لو الباسورد جاي من الرابط مباشرة — ادخل تلقائياً
+  const urlPass = new URLSearchParams(location.search).get('pass');
+  if (urlPass) {
+    document.getElementById('admin-pass').value = urlPass;
+    // امسح الباسورد من الرابط بدون ما تعيد تحميل الصفحة
+    history.replaceState(null, '', location.pathname);
+    adminLogin();
+    return;
+  }
+  const savedPass = sessionStorage.getItem('mr10x_admin_pass');
+  if (savedPass) {
+    document.getElementById('admin-pass').value = savedPass;
     adminLogin();
   }
 })();
