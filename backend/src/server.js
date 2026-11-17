@@ -21,9 +21,9 @@ app.get('/', (req, res) => {
   res.sendFile(join(__dirname, '../../frontend/landing.html'));
 });
 
-// رابط مختصر للأدمن
+// رابط مختصر للأدمن — يوجه مباشرة للصفحة
 app.get('/admin', (req, res) => {
-  res.redirect('/admin.html');
+  res.sendFile(join(__dirname, '../../frontend/admin.html'));
 });
 
 app.use(express.static(join(__dirname, '../../frontend')));
