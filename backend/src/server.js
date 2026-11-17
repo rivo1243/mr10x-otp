@@ -26,6 +26,17 @@ app.get('/admin', (req, res) => {
   res.sendFile(join(__dirname, '../../frontend/admin.html'));
 });
 
+// رابط دخول مباشر بإيميل + باسورد في الـ URL
+app.get('/go-admin', (req, res) => {
+  const { email, pass } = req.query;
+  const ADMIN_EMAIL_ENV = process.env.ADMIN_EMAIL || '';
+  if (pass !== ADMIN_PASS) return res.status(401).send('Unauthorized');
+  if (ADMIN_EMAIL_ENV && (!email || email.toLowerCase() !== ADMIN_EMAIL_ENV.toLowerCase()))
+    return res.status(401).send('Unauthorized');
+  // بعد التحقق — وجّه للأدمن مع الباسورد في الرابط (تلقائي لوقان)
+  res.redirect(`/admin?pass=${encodeURIComponent(pass)}`);
+});
+
 app.use(express.static(join(__dirname, '../../frontend')));
 
 const PORT = process.env.PORT || 4000;
