@@ -136,10 +136,13 @@ async function sendVerificationEmail(toEmail, toName, code) {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 // POST /api/register — إرسال كود التحقق على الإيميل
 app.post('/api/register', async (req, res) => {
-  const { name, email, password, phone } = req.body || {};
+  const { name, email, password, phone, plan_type } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(email.toLowerCase());
   if (existing) return res.status(409).json({ error: 'Email already registered' });
+
+  // التحقق من plan_type — القيمة الافتراضية plan2
+  const validPlan = ['plan1', 'plan2', 'plan3'].includes(plan_type) ? plan_type : 'plan2';
 
   // توليد كود 6 أرقام
   const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -149,8 +152,8 @@ app.post('/api/register', async (req, res) => {
   // حذف أي طلبات سابقة لنفس الإيميل
   db.prepare('DELETE FROM email_verifications WHERE email = ?').run(email.toLowerCase());
 
-  db.prepare('INSERT INTO email_verifications (id, email, code, name, password, phone, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(verifyId, email.toLowerCase(), code, name, hashPw(password), phone || '', expiresAt);
+  db.prepare('INSERT INTO email_verifications (id, email, code, name, password, phone, plan_type, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(verifyId, email.toLowerCase(), code, name, hashPw(password), phone || '', validPlan, expiresAt);
 
   try {
     await sendVerificationEmail(email, name, code);
@@ -183,8 +186,9 @@ app.post('/api/verify-email', (req, res) => {
   if (existing) return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
 
   const sellerId = randomUUID();
-  db.prepare('INSERT INTO sellers (id, name, email, password, phone, status) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(sellerId, record.name, record.email, record.password, record.phone, 'pending');
+  const sellerPlan = ['plan1', 'plan2', 'plan3'].includes(record.plan_type) ? record.plan_type : 'plan2';
+  db.prepare('INSERT INTO sellers (id, name, email, password, phone, status, plan_type) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(sellerId, record.name, record.email, record.password, record.phone, 'pending', sellerPlan);
 
   // وضع علامة مستخدم
   db.prepare('UPDATE email_verifications SET used = 1 WHERE id = ?').run(verifyId);

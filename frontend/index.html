@@ -98,6 +98,63 @@
   .auth-toggle span { color: var(--accent2); cursor: pointer; font-weight: 600; }
   .auth-toggle span:hover { text-decoration: underline; }
 
+  /* ── Plan selector cards (register only) ── */
+  .plan-label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
+  .plan-cards {
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .plan-card {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .plan-card:hover { border-color: var(--accent); }
+  .plan-card.selected {
+    border-color: var(--accent2);
+    background: rgba(124,58,237,0.08);
+  }
+  .plan-card input[type="radio"] { display: none; }
+  .plan-radio {
+    width: 18px; height: 18px; min-width: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.2s;
+  }
+  .plan-card.selected .plan-radio {
+    border-color: var(--accent2);
+    background: var(--accent2);
+  }
+  .plan-card.selected .plan-radio::after {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .plan-info { flex: 1; }
+  .plan-name {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    margin-bottom: 2px;
+  }
+  .plan-desc {
+    font-size: 12px; color: var(--muted); line-height: 1.5;
+  }
+  .plan-badge-reg {
+    font-size: 11px; font-weight: 700;
+    padding: 3px 8px; border-radius: 20px;
+    white-space: nowrap; align-self: center;
+  }
+  .plan-badge-reg.p1 { background: rgba(239,68,68,0.15); color: #f87171; }
+  .plan-badge-reg.p2 { background: rgba(16,185,129,0.15); color: #34d399; }
+  .plan-badge-reg.p3 { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
   /* ── Subscription Warning Banner ── */
   #sub-warning-banner {
     display: none;
@@ -377,6 +434,45 @@
         <label>رقم الواتساب</label>
         <input type="tel" id="auth-phone" placeholder="05xxxxxxxx" dir="ltr">
       </div>
+
+      <!-- اختيار الباقة — يظهر فقط عند التسجيل -->
+      <div id="register-plan-group" style="display:none">
+        <span class="plan-label">اختر الباقة المناسبة</span>
+        <div class="plan-cards">
+
+          <label class="plan-card" id="plan-card-1" onclick="selectPlan('plan1')">
+            <input type="radio" name="reg-plan" value="plan1">
+            <div class="plan-radio"></div>
+            <div class="plan-info">
+              <div class="plan-name">الباقة الأساسية</div>
+              <div class="plan-desc">تطبيق واحد فقط — مناسب للتجربة</div>
+            </div>
+            <span class="plan-badge-reg p1">تطبيق ×١</span>
+          </label>
+
+          <label class="plan-card selected" id="plan-card-2" onclick="selectPlan('plan2')">
+            <input type="radio" name="reg-plan" value="plan2" checked>
+            <div class="plan-radio"></div>
+            <div class="plan-info">
+              <div class="plan-name">الباقة الاحترافية</div>
+              <div class="plan-desc">تطبيقات غير محدودة — الأكثر شيوعاً</div>
+            </div>
+            <span class="plan-badge-reg p2">غير محدود</span>
+          </label>
+
+          <label class="plan-card" id="plan-card-3" onclick="selectPlan('plan3')">
+            <input type="radio" name="reg-plan" value="plan3">
+            <div class="plan-radio"></div>
+            <div class="plan-info">
+              <div class="plan-name">باقة المتاجر الكبيرة</div>
+              <div class="plan-desc">كل الميزات بلا حدود — للعملاء المحترفين</div>
+            </div>
+            <span class="plan-badge-reg p3">كل الميزات</span>
+          </label>
+
+        </div>
+      </div>
+
       <div class="form-group">
         <label>كلمة المرور</label>
         <input type="password" id="auth-password" placeholder="••••••••" dir="ltr">
@@ -558,12 +654,27 @@ function escapeHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function selectPlan(val) {
+  ['plan1','plan2','plan3'].forEach(p => {
+    const card = document.getElementById('plan-card-' + p.slice(-1));
+    if (card) card.classList.toggle('selected', p === val);
+  });
+  const radio = document.querySelector(`input[name="reg-plan"][value="${val}"]`);
+  if (radio) radio.checked = true;
+}
+
+function getSelectedPlan() {
+  const r = document.querySelector('input[name="reg-plan"]:checked');
+  return r ? r.value : 'plan2';
+}
+
 function toggleAuthMode() {
   isRegister = !isRegister;
   document.getElementById('auth-title').textContent = isRegister ? 'إنشاء حساب' : 'تسجيل الدخول';
   document.getElementById('auth-sub').textContent = isRegister ? 'أنشئ حسابك وابدأ تسليم الأكواد تلقائياً' : 'إدارة صناديق الإيميل وأكواد التحقق تلقائياً';
   document.getElementById('register-name-group').style.display = isRegister ? 'block' : 'none';
   document.getElementById('register-phone-group').style.display = isRegister ? 'block' : 'none';
+  document.getElementById('register-plan-group').style.display = isRegister ? 'block' : 'none';
   document.getElementById('auth-submit-btn').textContent = isRegister ? 'أرسل الطلب' : 'دخول';
   document.getElementById('auth-switch-text').textContent = isRegister ? 'عندك حساب؟' : 'ما عندك حساب؟';
   document.getElementById('auth-switch-btn').textContent = isRegister ? 'سجّل دخولك' : 'سجّل الحين';
@@ -584,8 +695,9 @@ async function submitAuth() {
   const errEl = document.getElementById('auth-err');
   errEl.style.display = 'none';
 
+  const plan_type = getSelectedPlan();
   const endpoint = isRegister ? '/api/register' : '/api/login';
-  const body = isRegister ? { name, email, password, phone } : { email, password };
+  const body = isRegister ? { name, email, password, phone, plan_type } : { email, password };
 
   try {
     const r = await fetch(API + endpoint, {
@@ -598,7 +710,7 @@ async function submitAuth() {
     // ── كود التحقق مطلوب ──
     if (data.verify) {
       pendingVerifyId = data.verifyId;
-      pendingFormData = { name, email, password, phone }; // حفظ البيانات لإعادة الإرسال
+      pendingFormData = { name, email, password, phone, plan_type }; // حفظ البيانات لإعادة الإرسال
       document.getElementById('auth-form-content').style.display = 'none';
       document.getElementById('verify-box').style.display = 'block';
       document.getElementById('verify-code-input').focus();
