@@ -89,5 +89,7 @@ try { db.exec(`ALTER TABLE sellers ADD COLUMN phone TEXT DEFAULT ''`); } catch {
 try { db.exec(`ALTER TABLE sellers ADD COLUMN status TEXT DEFAULT 'pending'`); } catch {}
 try { db.exec(`ALTER TABLE slots ADD COLUMN code_attempts INTEGER DEFAULT 0`); } catch {}
 try { db.exec(`ALTER TABLE sellers ADD COLUMN subscription_expires_at INTEGER DEFAULT NULL`); } catch {}
+// plan_type: 'plan1' = 1 slot فقط | 'plan2' = غير محدود | 'plan3' = كل الميزات (غير محدود)
+try { db.exec(`ALTER TABLE sellers ADD COLUMN plan_type TEXT DEFAULT 'plan2'`); } catch {}
 
 export default db;

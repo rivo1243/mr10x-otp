@@ -199,7 +199,7 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials' });
   if (seller.status === 'pending')
     return res.status(403).json({ error: 'pending', message: 'حسابك قيد المراجعة، سنتواصل معك على الواتساب قريباً.' });
-  res.json({ token: seller.id, name: seller.name, subscription_expires_at: seller.subscription_expires_at || null });
+  res.json({ token: seller.id, name: seller.name, subscription_expires_at: seller.subscription_expires_at || null, plan_type: seller.plan_type || 'plan2' });
 });
 
 // POST /api/forgot-password — طلب إعادة تعيين كلمة المرور
@@ -268,14 +268,14 @@ app.post('/api/reset-password', (req, res) => {
 
 // GET /api/me — بيانات الحساب الحالي
 app.get('/api/me', authMiddleware, (req, res) => {
-  const seller = db.prepare('SELECT id, name, email, phone, status, subscription_expires_at FROM sellers WHERE id = ?').get(req.seller.id);
+  const seller = db.prepare('SELECT id, name, email, phone, status, subscription_expires_at, plan_type FROM sellers WHERE id = ?').get(req.seller.id);
   res.json(seller);
 });
 
 // ─── Admin API ────────────────────────────────────────────────────────────────
 // GET /api/admin/sellers — قائمة البائعين
 app.get('/api/admin/sellers', adminMiddleware, (req, res) => {
-  const sellers = db.prepare('SELECT id, name, email, phone, status, created_at, subscription_expires_at FROM sellers ORDER BY created_at DESC').all();
+  const sellers = db.prepare('SELECT id, name, email, phone, status, created_at, subscription_expires_at, plan_type FROM sellers ORDER BY created_at DESC').all();
   res.json(sellers);
 });
 
@@ -302,6 +302,16 @@ app.patch('/api/admin/sellers/:id/subscription', adminMiddleware, (req, res) => 
   const { expires_at } = req.body || {};
   const ts = expires_at ? Math.floor(new Date(expires_at).getTime() / 1000) : null;
   db.prepare('UPDATE sellers SET subscription_expires_at = ? WHERE id = ?').run(ts, req.params.id);
+  res.json({ ok: true });
+});
+
+// PATCH /api/admin/sellers/:id/plan — تعيين الباقة
+// plan1 = تطبيق واحد فقط | plan2 = غير محدود | plan3 = كل الميزات (غير محدود)
+app.patch('/api/admin/sellers/:id/plan', adminMiddleware, (req, res) => {
+  const { plan_type } = req.body || {};
+  if (!['plan1', 'plan2', 'plan3'].includes(plan_type))
+    return res.status(400).json({ error: 'plan_type يجب أن يكون plan1 أو plan2 أو plan3' });
+  db.prepare('UPDATE sellers SET plan_type = ? WHERE id = ?').run(plan_type, req.params.id);
   res.json({ ok: true });
 });
 
@@ -384,6 +394,17 @@ app.post('/api/slots', authMiddleware, (req, res) => {
   if (!mailbox_id || !label) return res.status(400).json({ error: 'mailbox_id and label required' });
   const mailbox = db.prepare('SELECT id FROM mailboxes WHERE id = ? AND seller_id = ?').get(mailbox_id, req.seller.id);
   if (!mailbox) return res.status(404).json({ error: 'Mailbox not found' });
+
+  // ── تطبيق حدود الباقة ──────────────────────────────────────────────────────
+  const seller = db.prepare('SELECT plan_type FROM sellers WHERE id = ?').get(req.seller.id);
+  const planType = seller?.plan_type || 'plan2';
+  if (planType === 'plan1') {
+    // الباقة الأولى: تطبيق واحد فقط
+    const existingCount = db.prepare('SELECT COUNT(*) as n FROM slots WHERE seller_id = ?').get(req.seller.id).n;
+    if (existingCount >= 1)
+      return res.status(403).json({ error: 'plan_limit', message: 'باقتك تسمح بتطبيق واحد فقط. يرجى الترقية للباقة الثانية أو الثالثة.' });
+  }
+  // plan2 و plan3: غير محدود — لا قيود
 
   const created = [];
   const n = Math.min(Number(count) || 1, 100);

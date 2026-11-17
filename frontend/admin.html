@@ -421,6 +421,29 @@
   }
   .btn-sub:hover { background: rgba(124,58,237,0.28); }
 
+  /* ── Plan Select ── */
+  .plan-select {
+    padding: 5px 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .plan-select:focus { outline: none; border-color: var(--accent); }
+  .plan-badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 4px;
+    font-weight: 600;
+  }
+  .plan-badge.plan1 { background: rgba(239,68,68,0.15); color: #f87171; }
+  .plan-badge.plan2 { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .plan-badge.plan3 { background: rgba(234,179,8,0.15); color: #facc15; }
+
   /* ── Search & Filter ── */
   .table-toolbar {
     display: flex;
@@ -811,6 +834,22 @@ function renderTable(tab, sellers) {
       </div>
       ${subInfo}`;
 
+    // ── خلية الباقة ──
+    const currentPlan = s.plan_type || 'plan2';
+    const planSelectId = `plan-sel-${s.id}`;
+    const planLabels = { plan1: 'باقة 1 — تطبيق واحد', plan2: 'باقة 2 — غير محدود', plan3: 'باقة 3 — كل الميزات' };
+    const planBadgeClass = { plan1: 'plan-badge plan1', plan2: 'plan-badge plan2', plan3: 'plan-badge plan3' };
+    const planCell = `
+      <div class="sub-row">
+        <select id="${planSelectId}" class="plan-select">
+          <option value="plan1" ${currentPlan==='plan1'?'selected':''}>باقة 1 — تطبيق واحد</option>
+          <option value="plan2" ${currentPlan==='plan2'?'selected':''}>باقة 2 — غير محدود</option>
+          <option value="plan3" ${currentPlan==='plan3'?'selected':''}>باقة 3 — كل الميزات</option>
+        </select>
+        <button class="btn-sub" onclick="setPlan('${s.id}', '${planSelectId}')">تفعيل</button>
+      </div>
+      <span class="${planBadgeClass[currentPlan]}">${planLabels[currentPlan]}</span>`;
+
     return `<tr>
       <td data-label="الاسم"><strong>${escapeHtml(s.name)}</strong></td>
       <td data-label="البريد الإلكتروني" dir="ltr" style="font-size:13px">${escapeHtml(s.email)}</td>
@@ -818,6 +857,7 @@ function renderTable(tab, sellers) {
       <td data-label="الحالة"><span class="status-badge ${s.status}">${statusLabel}</span></td>
       <td data-label="تاريخ التسجيل" class="date-cell">${formatDate(s.created_at)}</td>
       <td data-label="الاشتراك">${subCell}</td>
+      <td data-label="الباقة">${planCell}</td>
       <td data-label="الإجراءات"><div class="actions-cell">${actions}</div></td>
     </tr>`;
   }).join('');
@@ -833,6 +873,7 @@ function renderTable(tab, sellers) {
             <th>الحالة</th>
             <th>تاريخ التسجيل</th>
             <th>الاشتراك</th>
+            <th>الباقة</th>
             <th>الإجراءات</th>
           </tr>
         </thead>
@@ -865,6 +906,23 @@ async function setSubscription(id, inputId) {
     toast(dateVal ? '✅ تم تعيين تاريخ الاشتراك' : '✅ تم إلغاء الاشتراك');
     await loadSellers();
   } catch(e) { toast('حدث خطأ أثناء تحديث الاشتراك'); }
+}
+
+async function setPlan(id, selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const plan_type = sel.value;
+  const planNames = { plan1: 'باقة 1 (تطبيق واحد)', plan2: 'باقة 2 (غير محدود)', plan3: 'باقة 3 (كل الميزات)' };
+  try {
+    const r = await fetch(`${API}/api/admin/sellers/${id}/plan`, {
+      method: 'PATCH',
+      headers: { 'x-admin-pass': ADMIN_PASS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan_type })
+    });
+    if (!r.ok) throw new Error();
+    toast(`✅ تم تفعيل ${planNames[plan_type]}`);
+    await loadSellers();
+  } catch(e) { toast('حدث خطأ أثناء تحديث الباقة'); }
 }
 
 async function approveSeller(id) {
