@@ -340,7 +340,8 @@
         <input type="text" id="verify-code-input" placeholder="000000" dir="ltr"
           maxlength="6" inputmode="numeric"
           style="text-align:center; font-size:24px; letter-spacing:6px; font-weight:700"
-          onkeyup="if(event.key==='Enter')confirmVerify()">
+          onkeyup="if(event.key==='Enter')confirmVerify()"
+          oninput="const e=document.getElementById('verify-err');if(e.style.color==='var(--green)'){e.style.display='none';e.style.color=''}">
       </div>
       <div id="verify-err" class="error-msg" style="display:none; text-align:right"></div>
       <button class="btn btn-primary" style="width:100%;padding:12px" onclick="confirmVerify()">تأكيد</button>
@@ -745,15 +746,23 @@ async function resendCode() {
     if (data.verify) {
       pendingVerifyId = data.verifyId;
       document.getElementById('verify-code-input').value = '';
+      document.getElementById('verify-code-input').focus();
+      // إظهار رسالة نجاح واضحة حتى يعرف المستخدم أن الكود الجديد في بريده
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = '✅ تم إرسال كود جديد — افحص بريدك وأدخل الكود الجديد';
+      errEl.style.display = 'block';
+      toast('✅ تم إرسال كود جديد إلى بريدك');
       startResendCountdown();
       return;
     }
 
     // إذا رجع خطأ
+    errEl.style.color = '';
     errEl.textContent = data.error || 'تعذر إعادة الإرسال';
     errEl.style.display = 'block';
     startResendCountdown(30); // إعادة عداد أقصر عند الخطأ
   } catch(e) {
+    errEl.style.color = '';
     errEl.textContent = 'تعذر الاتصال بالسيرفر';
     errEl.style.display = 'block';
     startResendCountdown(30);
@@ -1084,6 +1093,9 @@ if (TOKEN) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
+    // إذا كان صندوق التحقق مرئياً، لا تستدعي submitAuth
+    const verifyBoxVisible = document.getElementById('verify-box')?.style.display !== 'none';
+    if (verifyBoxVisible) return; // confirmVerify يُستدعى من onkeyup داخل الحقل
     if (document.getElementById('auth-screen').style.display !== 'none') submitAuth();
   }
   if (e.key === 'Escape') {
