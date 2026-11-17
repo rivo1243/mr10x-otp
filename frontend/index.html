@@ -435,6 +435,10 @@
         <input type="tel" id="auth-phone" placeholder="05xxxxxxxx" dir="ltr">
       </div>
 
+      <div class="form-group">
+        <label>كلمة المرور</label>
+        <input type="password" id="auth-password" placeholder="••••••••" dir="ltr">
+      </div>
       <!-- اختيار الباقة — يظهر فقط عند التسجيل -->
       <div id="register-plan-group" style="display:none">
         <span class="plan-label">اختر الباقة المناسبة</span>
@@ -473,10 +477,6 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label>كلمة المرور</label>
-        <input type="password" id="auth-password" placeholder="••••••••" dir="ltr">
-      </div>
       <div id="auth-err" class="error-msg"></div>
       <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitAuth()" id="auth-submit-btn">دخول</button>
       <a id="forgot-link" href="/reset-password.html" style="display:block;text-align:center;margin-top:12px;color:var(--muted);font-size:13px;text-decoration:none;">نسيت كلمة المرور؟</a>
