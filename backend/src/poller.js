@@ -8,6 +8,18 @@ import { decryptPassword } from './crypto-utils.js';
 // ── خريطة connections الحية: mailbox_id → { client, busy }
 const liveConns = new Map();
 
+// ── عداد إعادة المحاولة لكل صندوق: mailbox_id → attempt count
+const retryCount = new Map();
+
+// ── احسب وقت الانتظار حسب عدد المحاولات (exponential backoff)
+function getRetryDelay(id) {
+  const attempt = (retryCount.get(id) || 0) + 1;
+  retryCount.set(id, attempt);
+  // 10s, 30s, 60s, 5min, 5min, 5min...
+  const delays = [10_000, 30_000, 60_000, 300_000];
+  return delays[Math.min(attempt - 1, delays.length - 1)];
+}
+
 // ── استخراج نص الرسالة ────────────────────────────────────────────────────
 function extractText(msg) {
   const parts = msg.bodyParts;
@@ -77,8 +89,9 @@ async function connectMailbox(mailbox) {
     db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
       .run(String(err.message).slice(0, 200), mailbox.id);
     liveConns.delete(mailbox.id);
-    // F-18: align reconnect to 10s (matches idleLoop catch)
-    setTimeout(() => connectMailbox(mailbox), 10_000);
+    const delay = getRetryDelay(mailbox.id);
+    console.log(`[IMAP] ⚠️ خطأ ${mailbox.email} — إعادة المحاولة بعد ${delay/1000}ث`);
+    setTimeout(() => connectMailbox(mailbox), delay);
   });
 
   try {
@@ -86,6 +99,9 @@ async function connectMailbox(mailbox) {
 
     // جلب الرسائل اللي وصلت في آخر 5 دقائق عند الاتصال الأول
     await initialFetch(client, mailbox);
+
+    // اتصل بنجاح — صفّر عداد المحاولات
+    retryCount.delete(mailbox.id);
 
     db.prepare("UPDATE mailboxes SET status = 'connected', last_error = NULL WHERE id = ?")
       .run(mailbox.id);
@@ -99,8 +115,9 @@ async function connectMailbox(mailbox) {
     db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
       .run(String(err.message).slice(0, 200), mailbox.id);
     liveConns.delete(mailbox.id);
-    // F-18: align reconnect to 10s
-    setTimeout(() => connectMailbox(mailbox), 10_000);
+    const delay = getRetryDelay(mailbox.id);
+    console.log(`[IMAP] ❌ فشل الاتصال ${mailbox.email} — إعادة بعد ${delay/1000}ث`);
+    setTimeout(() => connectMailbox(mailbox), delay);
   }
 }
 
@@ -194,7 +211,9 @@ async function idleLoop(client, mailbox) {
         db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
           .run(String(err.message).slice(0, 200), mailbox.id);
         liveConns.delete(mailbox.id);
-        setTimeout(() => connectMailbox(mailbox), 10_000);
+        const delay = getRetryDelay(mailbox.id);
+        console.log(`[IMAP] 🔄 إعادة الاتصال ${mailbox.email} بعد ${delay/1000}ث`);
+        setTimeout(() => connectMailbox(mailbox), delay);
       }
       break;
     }
