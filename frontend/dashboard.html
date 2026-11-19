@@ -370,7 +370,7 @@
 
     <div class="form-group">
       <label class="form-label">صندوق البريد</label>
-      <select class="form-input" id="slot-mailbox"></select>
+      <select class="form-input" id="slot-mailbox" onchange="autoFillSlotEmail()"></select>
     </div>
 
     <div class="form-row">
@@ -619,6 +619,15 @@ function openSlotModal() {
 }
 function closeSlotModal() { document.getElementById('slot-modal').classList.remove('open'); }
 
+function autoFillSlotEmail() {
+  const sel = document.getElementById('slot-mailbox');
+  const emailInput = document.getElementById('slot-email');
+  const selected = sel.options[sel.selectedIndex];
+  if (selected && selected.dataset.email) {
+    emailInput.value = selected.dataset.email;
+  }
+}
+
 async function loadMailboxesForSelect() {
   const sel = document.getElementById('slot-mailbox');
   sel.innerHTML = '<option value="">جارٍ التحميل...</option>';
@@ -630,8 +639,10 @@ async function loadMailboxesForSelect() {
       sel.innerHTML = '<option value="">لا يوجد صندوق بريد — أضف واحداً أولاً</option>';
     } else {
       sel.innerHTML = boxes.map(b =>
-        `<option value="${b.id}">${b.email}${b.label ? ' — ' + b.label : ''}</option>`
+        `<option value="${b.id}" data-email="${b.email}">${b.email}${b.label ? ' — ' + b.label : ''}</option>`
       ).join('');
+      // auto-fill email field with first mailbox email
+      autoFillSlotEmail();
     }
   } catch(e) {
     sel.innerHTML = '<option value="">فشل التحميل</option>';
