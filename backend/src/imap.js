@@ -23,7 +23,7 @@ export async function testConnection(email, password, host, port = 993) {
     host, port, secure: true,
     auth: { user: email, pass: password },
     logger: false,
-    tls: { rejectUnauthorized: false }
+    tls: { rejectUnauthorized: true }  // X-01: verify TLS certificate to prevent MitM attacks
   });
   try {
     await client.connect();
@@ -98,7 +98,7 @@ export async function* fetchMessages(email, password, host, port, since) {
     host, port: Number(port) || 993, secure: true,
     auth: { user: email, pass: password },
     logger: false,
-    tls: { rejectUnauthorized: false }
+    tls: { rejectUnauthorized: true }  // X-01: verify TLS certificate to prevent MitM attacks
   });
 
   await client.connect();

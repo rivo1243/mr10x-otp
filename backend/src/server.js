@@ -30,8 +30,10 @@ app.get('/admin', (req, res) => {
 });
 
 // F-06: /go-admin now issues a session token instead of echoing the password in the URL
-app.get('/go-admin', (req, res) => {
-  const { email, pass } = req.query;
+// X-05: changed from GET to POST so credentials are in the request body, not the URL/query
+// (GET params appear in Railway access logs, server logs, and browser history)
+app.post('/go-admin', (req, res) => {
+  const { email, pass } = req.body || {};
   const ADMIN_EMAIL_ENV = process.env.ADMIN_EMAIL || '';
   if (!safeCompare(pass || '', ADMIN_PASS)) return res.status(401).send('Unauthorized');
   if (ADMIN_EMAIL_ENV && (!email || email.toLowerCase() !== ADMIN_EMAIL_ENV.toLowerCase()))
@@ -292,6 +294,12 @@ app.post('/api/verify-email', (req, res) => {
   const { verifyId, code } = req.body || {};
   if (!verifyId || !code) return res.status(400).json({ error: 'Missing fields' });
 
+  // X-03: rate limit — 10 attempts per 15 minutes per IP to prevent OTP brute-force
+  const ip = req.ip;
+  if (!rateLimit(`verify-email:${ip}`, 10, 15 * 60_000)) {
+    return res.status(429).json({ error: 'Too many attempts. Try again later.' });
+  }
+
   const record = db.prepare('SELECT * FROM email_verifications WHERE id = ?').get(verifyId);
   if (!record) return res.status(404).json({ error: 'انتهت صلاحية الكود أو غير صحيح' });
   if (record.used) return res.status(400).json({ error: 'تم استخدام هذا الكود مسبقاً' });
@@ -331,6 +339,12 @@ app.post('/api/verify-email', (req, res) => {
 
 // POST /api/login (F-03: return api_token; F-05: salt-aware hash check)
 app.post('/api/login', (req, res) => {
+  // X-02: rate limit — 10 attempts per 15 minutes per IP to prevent brute-force
+  const ip = req.ip;
+  if (!rateLimit(`login:${ip}`, 10, 15 * 60_000)) {
+    return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
+  }
+
   const { email, password } = req.body || {};
   const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
 
@@ -513,7 +527,9 @@ app.post('/api/mailboxes', authMiddleware, async (req, res) => {
     } else if (msg === 'CONN_FAIL') {
       arabicError = 'تعذّر الاتصال بالسيرفر — تأكد من صحة عنوان IMAP والـ Port.';
     } else {
-      arabicError = `فشل الاتصال: ${msg}`;
+      // X-04: never expose raw IMAP error message — it may leak internal server info
+      arabicError = 'تعذّر الاتصال بالسيرفر — تحقق من بيانات IMAP وحاول مرة أخرى.';
+      console.error('[IMAP testConnection] unexpected error:', msg);
     }
     return res.status(400).json({ error: arabicError });
   }
