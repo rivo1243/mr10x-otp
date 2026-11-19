@@ -129,6 +129,13 @@ for (const m of mailboxesWithoutToken) {
   fillWebhookToken.run(randomUUID(), m.id);
 }
 
+// Gmail OAuth2 — ربط مباشر بدون إعداد يدوي
+try { db.exec(`ALTER TABLE mailboxes ADD COLUMN gmail_refresh_token TEXT DEFAULT NULL`); } catch {}
+try { db.exec(`ALTER TABLE mailboxes ADD COLUMN gmail_access_token  TEXT DEFAULT NULL`); } catch {}
+try { db.exec(`ALTER TABLE mailboxes ADD COLUMN gmail_token_expiry  INTEGER DEFAULT NULL`); } catch {}
+try { db.exec(`ALTER TABLE mailboxes ADD COLUMN gmail_last_sync_ts  INTEGER DEFAULT NULL`); } catch {}
+try { db.exec(`ALTER TABLE mailboxes ADD COLUMN gmail_email         TEXT DEFAULT NULL`); } catch {}
+
 // F-11: clean up stale verification and reset records (older than 24h past expiry)
 db.prepare('DELETE FROM email_verifications WHERE expires_at < unixepoch() - 86400').run();
 db.prepare('DELETE FROM password_resets WHERE expires_at < unixepoch() - 86400').run();

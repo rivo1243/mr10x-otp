@@ -8,6 +8,11 @@ import db from './db.js';
 import { pollAll } from './poller.js';
 import { encryptPassword, decryptPassword } from './crypto-utils.js';
 import { extractCode } from './extract.js';
+import {
+  gmailEnabled, makeOAuthState, parseOAuthState,
+  getAuthUrl, exchangeCode, getGmailAddress,
+  pollGmailMailboxes
+} from './gmail.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -556,9 +561,106 @@ app.get('/api/admin/stats', adminMiddleware, (req, res) => {
 });
 
 // ─── Mailboxes ─────────────────────────────────────────────────────────────────
+// ─── Gmail OAuth Routes ────────────────────────────────────────────────────────
+
+// Start OAuth — requires seller Bearer auth
+// Returns JSON { url } so the frontend JS can do window.location.href = url
+app.get('/api/auth/gmail/start', authMiddleware, (req, res) => {
+  if (!gmailEnabled()) return res.status(503).json({ error: 'Gmail OAuth not configured' });
+  const { mailbox_id } = req.query;
+  if (!mailbox_id) return res.status(400).json({ error: 'mailbox_id required' });
+
+  const mailbox = db.prepare('SELECT id FROM mailboxes WHERE id = ? AND seller_id = ?')
+    .get(mailbox_id, req.seller.id);
+  if (!mailbox) return res.status(404).json({ error: 'Mailbox not found' });
+
+  const state = makeOAuthState(mailbox_id, req.seller.id);
+  res.json({ url: getAuthUrl(state) });
+});
+
+// OAuth callback — from Google, no Bearer auth
+app.get('/api/auth/gmail/callback', async (req, res) => {
+  if (!gmailEnabled()) return res.status(503).send('Gmail OAuth not configured');
+  const { code, state, error } = req.query;
+
+  if (error) {
+    return res.redirect(`/index.html?gmail_error=${encodeURIComponent(error)}`);
+  }
+  if (!code || !state) {
+    return res.redirect('/index.html?gmail_error=missing_params');
+  }
+
+  const parsed = parseOAuthState(state);
+  if (!parsed) {
+    return res.redirect('/index.html?gmail_error=invalid_state');
+  }
+
+  const { mailboxId, sellerId } = parsed;
+
+  // Verify mailbox still belongs to this seller
+  const mailbox = db.prepare('SELECT id, email FROM mailboxes WHERE id = ? AND seller_id = ?')
+    .get(mailboxId, sellerId);
+  if (!mailbox) {
+    return res.redirect('/?gmail_error=mailbox_not_found');
+  }
+
+  try {
+    const tokens = await exchangeCode(code);
+    const now = Math.floor(Date.now() / 1000);
+    const expiry = now + (tokens.expires_in || 3600);
+
+    // Get the connected Gmail address
+    let gmailEmail = null;
+    try { gmailEmail = await getGmailAddress(tokens.access_token); } catch {}
+
+    db.prepare(`
+      UPDATE mailboxes
+      SET gmail_refresh_token = ?, gmail_access_token = ?, gmail_token_expiry = ?,
+          gmail_email = ?, gmail_last_sync_ts = ?, status = 'active', last_error = NULL
+      WHERE id = ?
+    `).run(
+      tokens.refresh_token,
+      tokens.access_token,
+      expiry,
+      gmailEmail || mailbox.email,
+      now,
+      mailboxId
+    );
+
+    // Redirect back to the seller dashboard
+    res.redirect('/index.html?gmail_connected=1');
+  } catch (err) {
+    console.error('[Gmail OAuth] callback error:', err.message);
+    res.redirect(`/index.html?gmail_error=${encodeURIComponent('فشل الاتصال بـ Gmail')}`);
+  }
+});
+
+// Disconnect Gmail from a mailbox
+app.post('/api/mailboxes/:id/gmail-disconnect', authMiddleware, (req, res) => {
+  const mailbox = db.prepare('SELECT id FROM mailboxes WHERE id = ? AND seller_id = ?')
+    .get(req.params.id, req.seller.id);
+  if (!mailbox) return res.status(404).json({ error: 'Mailbox not found' });
+
+  db.prepare(`
+    UPDATE mailboxes
+    SET gmail_refresh_token = NULL, gmail_access_token = NULL,
+        gmail_token_expiry = NULL, gmail_email = NULL, gmail_last_sync_ts = NULL,
+        status = 'active'
+    WHERE id = ?
+  `).run(req.params.id);
+
+  res.json({ ok: true });
+});
+
+// ─── Mailboxes ─────────────────────────────────────────────────────────────────
+
 app.get('/api/mailboxes', authMiddleware, (req, res) => {
-  const rows = db.prepare('SELECT id, email, label, status, last_sync, last_error, webhook_token FROM mailboxes WHERE seller_id = ?')
-    .all(req.seller.id);
+  const rows = db.prepare(`
+    SELECT id, email, label, status, last_sync, last_error, webhook_token,
+           gmail_email,
+           CASE WHEN gmail_refresh_token IS NOT NULL THEN 1 ELSE 0 END as gmail_connected
+    FROM mailboxes WHERE seller_id = ?
+  `).all(req.seller.id);
   res.json(rows);
 });
 
@@ -783,6 +885,16 @@ app.get('/api/code/:token', (req, res) => {
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
 pollAll();
+
+// Gmail polling — كل 60 ثانية
+if (gmailEnabled()) {
+  // Initial poll after 10 seconds (let server warm up)
+  setTimeout(() => pollGmailMailboxes(db), 10_000);
+  setInterval(() => pollGmailMailboxes(db), 60_000);
+  console.log('[Gmail] Polling enabled — every 60s');
+} else {
+  console.log('[Gmail] OAuth not configured (GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI missing)');
+}
 
 app.listen(PORT, () => {
   console.log(`Mr10x OTP Backend running on port ${PORT}`);
