@@ -645,6 +645,45 @@ app.patch('/api/mailboxes/:id/password', authMiddleware, async (req, res) => {
   res.json({ ok: true });
 });
 
+// إعادة ربط صندوق بريد بالكلمة المحفوظة (بدون إدخال كلمة مرور جديدة)
+app.post('/api/mailboxes/:id/reconnect', authMiddleware, async (req, res) => {
+  const mailbox = db.prepare('SELECT * FROM mailboxes WHERE id = ? AND seller_id = ?')
+    .get(req.params.id, req.seller.id);
+  if (!mailbox) return res.status(404).json({ error: 'الصندوق غير موجود' });
+
+  let plainPass;
+  try {
+    plainPass = decryptPassword(mailbox.password);
+  } catch {
+    return res.status(400).json({ error: 'تعذّر فك تشفير كلمة المرور — أعد تعيينها من زر "تحديث كلمة المرور".' });
+  }
+
+  try {
+    await testConnection(mailbox.email, plainPass, mailbox.imap_host, Number(mailbox.imap_port) || 993);
+  } catch (e) {
+    const msg = e.message;
+    let arabicError;
+    if (msg === 'AUTH_FAIL:GMAIL') {
+      arabicError = 'فشل الاتصال — كلمة المرور المحفوظة لم تعد تعمل. استخدم "تحديث كلمة المرور" وأدخل App Password جديدة.';
+    } else if (msg === 'AUTH_FAIL:OUTLOOK' || msg === 'AUTH_FAIL:YAHOO' || msg === 'AUTH_FAIL:GENERIC') {
+      arabicError = 'فشل الاتصال — كلمة المرور المحفوظة لم تعد صحيحة. استخدم "تحديث كلمة المرور".';
+    } else if (msg === 'CONN_FAIL') {
+      arabicError = 'تعذّر الاتصال بالسيرفر — تأكد من صحة عنوان IMAP والـ Port.';
+    } else {
+      arabicError = 'تعذّر الاتصال — تحقق من بيانات IMAP.';
+      console.error('[IMAP reconnect] unexpected error:', msg);
+    }
+    db.prepare("UPDATE mailboxes SET status = 'error', last_error = ? WHERE id = ?")
+      .run(arabicError.slice(0, 200), mailbox.id);
+    return res.status(400).json({ error: arabicError });
+  }
+
+  db.prepare("UPDATE mailboxes SET status = 'connected', last_error = NULL WHERE id = ?")
+    .run(mailbox.id);
+  await disconnectMailbox(mailbox.id);
+  res.json({ ok: true });
+});
+
 // ─── Slots ────────────────────────────────────────────────────────────────────
 app.get('/api/slots', authMiddleware, (req, res) => {
   const rows = db.prepare(`

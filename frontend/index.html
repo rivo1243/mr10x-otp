@@ -1014,7 +1014,8 @@ async function loadMailboxes() {
         ${mb.status === 'connected' ? 'متصل' : 'خطأ'}
       </span>
       ${mb.last_error ? `<span style="font-size:11px;color:var(--red);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(mb.last_error)}">${escapeHtml(mb.last_error.slice(0,40))}</span>` : ''}
-      <button class="btn btn-sm" style="background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.25)" onclick="toggleUpdatePassRow('${mb.id}')">🔑 تحديث كلمة المرور</button>
+      <button class="btn btn-sm" id="reconnect-btn-${mb.id}" style="background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.25)" onclick="reconnectMailbox('${mb.id}')">🔄 تحديث الاتصال</button>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border)" onclick="toggleUpdatePassRow('${mb.id}')">🔑 تغيير كلمة المرور</button>
       <button class="btn btn-danger btn-sm" onclick="deleteMailbox('${mb.id}')">حذف</button>
       <div id="upd-row-${mb.id}" style="display:none;width:100%;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07)">
         ${isGmail ? `<div style="font-size:12px;color:#fbbf24;margin-bottom:8px;padding:8px 10px;background:rgba(251,191,36,0.08);border-radius:6px;border:1px solid rgba(251,191,36,0.2)">
@@ -1024,7 +1025,7 @@ async function loadMailboxes() {
           <input type="password" id="upd-input-${mb.id}" placeholder="كلمة المرور الجديدة / App Password"
             dir="ltr" style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:14px"
             onkeyup="if(event.key==='Enter')saveUpdatePassInline('${mb.id}')">
-          <button class="btn btn-primary btn-sm" id="upd-btn-${mb.id}" onclick="saveUpdatePassInline('${mb.id}')">تحديث</button>
+          <button class="btn btn-primary btn-sm" id="upd-btn-${mb.id}" onclick="saveUpdatePassInline('${mb.id}')">حفظ</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleUpdatePassRow('${mb.id}')">إلغاء</button>
         </div>
         <div id="upd-err-${mb.id}" style="display:none;font-size:12px;color:var(--red);margin-top:6px"></div>
@@ -1150,6 +1151,25 @@ async function deleteMailbox(id) {
   if (!confirm('حذف هذا الصندوق؟ سيتم حذف كل روابطه أيضاً')) return;
   await apiFetch('/api/mailboxes/' + id, { method: 'DELETE' });
   loadAll();
+}
+
+async function reconnectMailbox(id) {
+  const btn = document.getElementById('reconnect-btn-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ الاتصال...'; }
+  try {
+    const r = await apiFetch('/api/mailboxes/' + id + '/reconnect', { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) {
+      alert(data.error || 'تعذّر إعادة الاتصال');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 تحديث الاتصال'; }
+      return;
+    }
+    if (btn) { btn.textContent = '✓ تم الاتصال'; }
+    setTimeout(() => loadAll(), 1500);
+  } catch (e) {
+    alert('خطأ في الاتصال بالخادم');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 تحديث الاتصال'; }
+  }
 }
 
 function toggleUpdatePassRow(id) {
