@@ -647,7 +647,7 @@
 
 <script>
 const API = window.MR10X_API || 'https://mr10x-otp-production.up.railway.app';
-let ADMIN_PASS = '';
+let ADMIN_TOKEN = '';  // F-06/F-14: store session token, not password
 let allSellers = [];
 let deletePendingId = null;
 let currentTab = 'pending';
@@ -670,24 +670,35 @@ function formatDate(ts) {
     + ' ' + d.toLocaleTimeString('ar-SA', { hour:'2-digit', minute:'2-digit' });
 }
 
-// ── تسجيل الدخول ──
+// ── تسجيل الدخول — F-06/F-14: POST to /api/admin/login → receive session token ──
 async function adminLogin() {
   const pass = document.getElementById('admin-pass').value;
   const errEl = document.getElementById('login-err');
   errEl.style.display = 'none';
 
   try {
-    const r = await fetch(`${API}/api/admin/sellers`, {
-      headers: { 'x-admin-pass': pass }
+    // Exchange password for a session token (never store the password itself)
+    const loginRes = await fetch(`${API}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
     });
-    if (r.status === 401) {
+    if (loginRes.status === 401) {
       errEl.textContent = 'كلمة المرور غير صحيحة';
       errEl.style.display = 'block';
       return;
     }
+    if (!loginRes.ok) throw new Error('server error');
+    const { token } = await loginRes.json();
+    ADMIN_TOKEN = token;
+    sessionStorage.setItem('mr10x_admin_token', token);  // F-14: token, not password
+
+    // Load sellers using the new session token
+    const r = await fetch(`${API}/api/admin/sellers`, {
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
+    });
+    if (!r.ok) throw new Error('failed to load sellers');
     const data = await r.json();
-    ADMIN_PASS = pass;
-    sessionStorage.setItem('mr10x_admin_pass', pass);
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     processData(data);
@@ -699,8 +710,8 @@ async function adminLogin() {
 }
 
 function adminLogout() {
-  ADMIN_PASS = '';
-  sessionStorage.removeItem('mr10x_admin_pass');
+  ADMIN_TOKEN = '';
+  sessionStorage.removeItem('mr10x_admin_token');  // F-14: clear token not password
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('admin-pass').value = '';
@@ -710,7 +721,7 @@ function adminLogout() {
 async function loadSellers() {
   try {
     const r = await fetch(`${API}/api/admin/sellers`, {
-      headers: { 'x-admin-pass': ADMIN_PASS }
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
     });
     if (!r.ok) return;
     const data = await r.json();
@@ -723,7 +734,7 @@ async function loadSellers() {
 async function loadStats() {
   try {
     const r = await fetch(`${API}/api/admin/stats`, {
-      headers: { 'x-admin-pass': ADMIN_PASS }
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
     });
     if (!r.ok) return;
     const d = await r.json();
@@ -899,7 +910,7 @@ async function setSubscription(id, inputId) {
   try {
     const r = await fetch(`${API}/api/admin/sellers/${id}/subscription`, {
       method: 'PATCH',
-      headers: { 'x-admin-pass': ADMIN_PASS, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ expires_at: dateVal || null })
     });
     if (!r.ok) throw new Error();
@@ -916,7 +927,7 @@ async function setPlan(id, selectId) {
   try {
     const r = await fetch(`${API}/api/admin/sellers/${id}/plan`, {
       method: 'PATCH',
-      headers: { 'x-admin-pass': ADMIN_PASS, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ plan_type })
     });
     if (!r.ok) throw new Error();
@@ -929,7 +940,7 @@ async function approveSeller(id) {
   try {
     await fetch(`${API}/api/admin/sellers/${id}/approve`, {
       method: 'PATCH',
-      headers: { 'x-admin-pass': ADMIN_PASS }
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
     });
     toast('✅ تم قبول المتجر بنجاح');
     await loadSellers();
@@ -940,7 +951,7 @@ async function rejectSeller(id) {
   try {
     await fetch(`${API}/api/admin/sellers/${id}/reject`, {
       method: 'PATCH',
-      headers: { 'x-admin-pass': ADMIN_PASS }
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
     });
     toast('🚫 تم رفض/تعليق المتجر');
     await loadSellers();
@@ -965,34 +976,60 @@ async function confirmDelete() {
   try {
     await fetch(`${API}/api/admin/sellers/${id}`, {
       method: 'DELETE',
-      headers: { 'x-admin-pass': ADMIN_PASS }
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
     });
     toast('🗑️ تم حذف المتجر');
     await loadSellers();
   } catch(e) { toast('حدث خطأ'); }
 }
 
-// ── تحقق تلقائي من الجلسة ──
+// ── تحقق تلقائي من الجلسة — F-06/F-14: use session token not password ──
 (function init() {
-  // لو الباسورد جاي من الرابط مباشرة — ادخل تلقائياً
-  const urlPass = new URLSearchParams(location.search).get('pass');
-  if (urlPass) {
-    document.getElementById('admin-pass').value = urlPass;
-    // امسح الباسورد من الرابط بدون ما تعيد تحميل الصفحة
+  // F-06: session token arrives from /go-admin redirect as ?session=<token>
+  const urlSession = new URLSearchParams(location.search).get('session');
+  if (urlSession) {
+    // Clear token from URL immediately (never expose in browser history)
     history.replaceState(null, '', location.pathname);
-    adminLogin();
+    ADMIN_TOKEN = urlSession;
+    sessionStorage.setItem('mr10x_admin_token', urlSession);
+    // Load sellers directly — token already validated by /go-admin
+    fetch(`${API}/api/admin/sellers`, {
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
+    }).then(r => {
+      if (!r.ok) { ADMIN_TOKEN = ''; sessionStorage.removeItem('mr10x_admin_token'); return; }
+      return r.json();
+    }).then(data => {
+      if (!data) return;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      processData(data);
+      loadStats();
+    }).catch(() => { ADMIN_TOKEN = ''; sessionStorage.removeItem('mr10x_admin_token'); });
     return;
   }
-  const savedPass = sessionStorage.getItem('mr10x_admin_pass');
-  if (savedPass) {
-    document.getElementById('admin-pass').value = savedPass;
-    adminLogin();
+  // F-14: restore session token (not password) from sessionStorage
+  const savedToken = sessionStorage.getItem('mr10x_admin_token');
+  if (savedToken) {
+    ADMIN_TOKEN = savedToken;
+    // Verify the stored token is still valid
+    fetch(`${API}/api/admin/sellers`, {
+      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
+    }).then(r => {
+      if (!r.ok) { adminLogout(); return; }
+      return r.json();
+    }).then(data => {
+      if (!data) return;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      processData(data);
+      loadStats();
+    }).catch(() => adminLogout());
   }
 })();
 
 // ── تحديث تلقائي كل 30 ثانية ──
 setInterval(() => {
-  if (ADMIN_PASS) {
+  if (ADMIN_TOKEN) {
     loadSellers();
     loadStats();
   }

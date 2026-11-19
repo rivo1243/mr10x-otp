@@ -564,8 +564,9 @@ function renderSlots(slots) {
     const attLabel = left === 0 ? 'استُنفدت' : `${left}/2 محاولة`;
     const isActive = left > 0;
     const slotUrl = `${FRONT}/code.html?t=${s.token}`;
-    const mailMeta = s.mailbox_email ? `📬 ${s.mailbox_email}` : '';
-    const emailMeta = s.account_email ? `👤 ${s.account_email}` : '';
+    // F-12: escape user-supplied values before inserting into innerHTML
+    const mailMeta = s.mailbox_email ? `📬 ${escHtml(s.mailbox_email)}` : '';
+    const emailMeta = s.account_email ? `👤 ${escHtml(s.account_email)}` : '';
 
     return `
     <div class="slot-card">

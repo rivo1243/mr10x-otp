@@ -3,6 +3,7 @@ import { ImapFlow } from 'imapflow';
 import { convert } from 'html-to-text';
 import { extractCode } from './extract.js';
 import { randomUUID } from 'node:crypto';
+import { decryptPassword } from './crypto-utils.js';
 
 // ── خريطة connections الحية: mailbox_id → { client, busy }
 const liveConns = new Map();
@@ -63,9 +64,11 @@ async function connectMailbox(mailbox) {
     host: mailbox.imap_host,
     port: Number(mailbox.imap_port) || 993,
     secure: true,
-    auth: { user: mailbox.email, pass: mailbox.password },
+    // F-04: decrypt stored IMAP password before use
+    auth: { user: mailbox.email, pass: decryptPassword(mailbox.password) },
     logger: false,
-    tls: { rejectUnauthorized: false }
+    // F-10: enforce TLS certificate verification
+    tls: { rejectUnauthorized: true }
   });
 
   liveConns.set(mailbox.id, { client, busy: false });
@@ -74,8 +77,8 @@ async function connectMailbox(mailbox) {
     db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
       .run(String(err.message).slice(0, 200), mailbox.id);
     liveConns.delete(mailbox.id);
-    // إعادة المحاولة بعد 10 دقائق فقط — لتجنب فيضان اللوقات
-    setTimeout(() => connectMailbox(mailbox), 10 * 60_000);
+    // F-18: align reconnect to 10s (matches idleLoop catch)
+    setTimeout(() => connectMailbox(mailbox), 10_000);
   });
 
   try {
@@ -96,8 +99,8 @@ async function connectMailbox(mailbox) {
     db.prepare("UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?")
       .run(String(err.message).slice(0, 200), mailbox.id);
     liveConns.delete(mailbox.id);
-    // إعادة المحاولة بعد 10 دقائق فقط
-    setTimeout(() => connectMailbox(mailbox), 10 * 60_000);
+    // F-18: align reconnect to 10s
+    setTimeout(() => connectMailbox(mailbox), 10_000);
   }
 }
 

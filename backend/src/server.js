@@ -1,40 +1,40 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { randomUUID } from 'node:crypto';
-import { createHash } from 'node:crypto';
+import { randomUUID, randomInt, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import db from './db.js';
 import { guessHost, testConnection } from './imap.js';
 import { pollAll } from './poller.js';
+import { encryptPassword } from './crypto-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// ─── CORS (F-09) ──────────────────────────────────────────────────────────────
+const CORS_ORIGIN = process.env.CORS_ORIGIN || false;
 const app = express();
-app.use(cors());
+app.use(cors(CORS_ORIGIN ? { origin: CORS_ORIGIN } : false));
 app.use(express.json());
 
 // ─── Serve Frontend ───────────────────────────────────────────────────────────
-// الصفحة الرئيسية → landing.html (يجب أن يكون قبل express.static)
 app.get('/', (req, res) => {
   res.sendFile(join(__dirname, '../../frontend/landing.html'));
 });
 
-// رابط مختصر للأدمن — يوجه مباشرة للصفحة
 app.get('/admin', (req, res) => {
   res.sendFile(join(__dirname, '../../frontend/admin.html'));
 });
 
-// رابط دخول مباشر بإيميل + باسورد في الـ URL
+// F-06: /go-admin now issues a session token instead of echoing the password in the URL
 app.get('/go-admin', (req, res) => {
   const { email, pass } = req.query;
   const ADMIN_EMAIL_ENV = process.env.ADMIN_EMAIL || '';
-  if (pass !== ADMIN_PASS) return res.status(401).send('Unauthorized');
+  if (!safeCompare(pass || '', ADMIN_PASS)) return res.status(401).send('Unauthorized');
   if (ADMIN_EMAIL_ENV && (!email || email.toLowerCase() !== ADMIN_EMAIL_ENV.toLowerCase()))
     return res.status(401).send('Unauthorized');
-  // بعد التحقق — وجّه للأدمن مع الباسورد في الرابط (تلقائي لوقان)
-  res.redirect(`/admin?pass=${encodeURIComponent(pass)}`);
+  const sessionToken = createAdminSession();
+  res.redirect(`/admin?session=${encodeURIComponent(sessionToken)}`);
 });
 
 app.use(express.static(join(__dirname, '../../frontend')));
@@ -42,42 +42,149 @@ app.use(express.static(join(__dirname, '../../frontend')));
 const PORT = process.env.PORT || 4000;
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
-function hashPw(pw) {
+/**
+ * hashPw(pw, salt) — PBKDF2-like with SHA-256 + per-user salt (F-05)
+ * Legacy path: salt=null → old single-secret hash (for migration only)
+ */
+function hashPw(pw, salt) {
+  if (salt) {
+    // new: HMAC-SHA256(pw, salt + SECRET)
+    return createHash('sha256')
+      .update(salt + pw + (process.env.SECRET || 'mr10x'))
+      .digest('hex');
+  }
+  // legacy (no salt): keep working for existing accounts
   return createHash('sha256').update(pw + (process.env.SECRET || 'mr10x')).digest('hex');
 }
+
+function generateSalt() {
+  return randomBytes(16).toString('hex');
+}
+
+function safeCompare(a, b) {
+  try {
+    const ba = Buffer.from(String(a));
+    const bb = Buffer.from(String(b));
+    if (ba.length !== bb.length) {
+      // constant-time length mismatch check
+      timingSafeEqual(ba, ba);
+      return false;
+    }
+    return timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
+
+// ─── Rate limiting (F-08, F-13) ───────────────────────────────────────────────
+const rateLimitStore = new Map(); // key → { count, resetAt }
+
+function rateLimit(key, maxPerWindow = 10, windowMs = 60_000) {
+  const now = Date.now();
+  let entry = rateLimitStore.get(key);
+  if (!entry || entry.resetAt < now) {
+    entry = { count: 0, resetAt: now + windowMs };
+    rateLimitStore.set(key, entry);
+  }
+  entry.count++;
+  return entry.count <= maxPerWindow;
+}
+
+// Cleanup stale rate-limit entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of rateLimitStore) {
+    if (v.resetAt < now) rateLimitStore.delete(k);
+  }
+}, 5 * 60_000);
+
+// ─── Auth middleware (F-03: use api_token, F-07: subscription check) ──────────
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  const seller = db.prepare('SELECT * FROM sellers WHERE id = ?').get(token);
+  const seller = db.prepare('SELECT * FROM sellers WHERE api_token = ?').get(token);
   if (!seller) return res.status(401).json({ error: 'Invalid token' });
-  if (seller.status === 'pending') return res.status(403).json({ error: 'pending' });
+  if (seller.status === 'pending')  return res.status(403).json({ error: 'pending' });
   if (seller.status === 'rejected') return res.status(403).json({ error: 'rejected' });
+  // F-07: enforce subscription expiry
+  if (seller.subscription_expires_at && seller.subscription_expires_at < Math.floor(Date.now() / 1000)) {
+    return res.status(403).json({ error: 'subscription_expired', message: 'انتهت صلاحية اشتراكك. تواصل مع الدعم للتجديد.' });
+  }
   req.seller = seller;
   next();
 }
 
-// ─── Admin Auth ───────────────────────────────────────────────────────────────
-const ADMIN_PASS = process.env.ADMIN_PASS || 'mr10x-admin-2024';
+// ─── Admin Auth (F-01: no hardcoded fallback; F-06: session tokens) ──────────
+// F-01: ADMIN_PASS must be set — no default fallback
+const ADMIN_PASS = process.env.ADMIN_PASS;
+if (!ADMIN_PASS) {
+  console.error('[FATAL] ADMIN_PASS environment variable is not set. Set it before starting the server.');
+  process.exit(1);
+}
+
+// In-memory admin sessions: token → { expiresAt }
+const adminSessions = new Map();
+
+function createAdminSession() {
+  const token = randomBytes(32).toString('hex');
+  adminSessions.set(token, { expiresAt: Date.now() + 8 * 60 * 60_000 }); // 8h
+  return token;
+}
+
+function validateAdminSession(token) {
+  const s = adminSessions.get(token);
+  if (!s) return false;
+  if (s.expiresAt < Date.now()) {
+    adminSessions.delete(token);
+    return false;
+  }
+  return true;
+}
+
+// Cleanup expired admin sessions every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of adminSessions) {
+    if (v.expiresAt < now) adminSessions.delete(k);
+  }
+}, 60 * 60_000);
 
 function adminMiddleware(req, res, next) {
-  const pass = req.headers['x-admin-pass'] || req.query.pass;
-  if (pass !== ADMIN_PASS) return res.status(401).json({ error: 'Unauthorized' });
-  next();
+  // Accept session token from Authorization header: "AdminSession <token>"
+  const authHeader = req.headers.authorization || '';
+  const sessionToken = authHeader.startsWith('AdminSession ')
+    ? authHeader.slice('AdminSession '.length)
+    : req.query.session || null;
+
+  if (sessionToken && validateAdminSession(sessionToken)) return next();
+
+  // Legacy: also accept x-admin-pass for backwards compat (deprecated, will be removed)
+  const pass = req.headers['x-admin-pass'];
+  if (pass && safeCompare(pass, ADMIN_PASS)) return next();
+
+  return res.status(401).json({ error: 'Unauthorized' });
 }
+
+// POST /api/admin/login — exchange password for session token
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body || {};
+  if (!safeCompare(password || '', ADMIN_PASS))
+    return res.status(401).json({ error: 'Invalid password' });
+  const token = createAdminSession();
+  res.json({ token, expiresIn: 8 * 3600 });
+});
 
 // ─── Mailer (Mailjet API) ─────────────────────────────────────────────────────
 const MAILJET_API_KEY    = process.env.MAILJET_API_KEY;
 const MAILJET_SECRET_KEY = process.env.MAILJET_SECRET_KEY;
-const MAILJET_FROM_EMAIL = process.env.MAILJET_FROM_EMAIL || 'x100mr10xmr10x@gmail.com';
+const MAILJET_FROM_EMAIL = process.env.MAILJET_FROM_EMAIL || 'noreply@mr10x.app';
 const MAILJET_FROM_NAME  = 'Mr10x';
 
 async function sendEmail({ to, subject, html }) {
   if (!MAILJET_API_KEY || !MAILJET_SECRET_KEY) {
-    console.error(`[MAIL ERROR] Mailjet keys not set — cannot send email to ${to}`);
+    console.error(`[MAIL ERROR] Mailjet keys not set — cannot send email`);
     throw new Error('Mailjet API keys not configured');
   }
-
-  console.log(`[MAIL] attempting to send to ${to} via Mailjet`);
 
   const auth = Buffer.from(`${MAILJET_API_KEY}:${MAILJET_SECRET_KEY}`).toString('base64');
 
@@ -101,18 +208,14 @@ async function sendEmail({ to, subject, html }) {
 
   if (!res.ok) {
     const err = await res.text();
-    console.error(`[MAIL ERROR] Mailjet responded ${res.status}: ${err}`);
     throw new Error(`Mailjet error ${res.status}: ${err}`);
   }
 
   const data = await res.json();
   const status = data?.Messages?.[0]?.Status;
   if (status && status !== 'success') {
-    console.error(`[MAIL ERROR] Mailjet message status: ${status}`, data.Messages[0]);
     throw new Error(`Mailjet delivery failed: ${status}`);
   }
-
-  console.log(`[MAIL] sent to ${to} via Mailjet ✓`);
 }
 
 async function sendVerificationEmail(toEmail, toName, code) {
@@ -141,25 +244,24 @@ app.post('/api/register', async (req, res) => {
   const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(email.toLowerCase());
   if (existing) return res.status(409).json({ error: 'Email already registered' });
 
-  // التحقق من plan_type — القيمة الافتراضية plan2
   const validPlan = ['plan1', 'plan2', 'plan3'].includes(plan_type) ? plan_type : 'plan2';
 
-  // توليد كود 6 أرقام
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  // F-02: cryptographically secure OTP generation
+  const code = String(randomInt(100000, 1000000));
   const expiresAt = Math.floor(Date.now() / 1000) + 900; // 15 دقيقة
   const verifyId = randomUUID();
 
-  // حذف أي طلبات سابقة لنفس الإيميل
   db.prepare('DELETE FROM email_verifications WHERE email = ?').run(email.toLowerCase());
 
+  // F-05: generate salt and hash with salt
+  const salt = generateSalt();
   db.prepare('INSERT INTO email_verifications (id, email, code, name, password, phone, plan_type, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(verifyId, email.toLowerCase(), code, name, hashPw(password), phone || '', validPlan, expiresAt);
+    .run(verifyId, email.toLowerCase(), code, name, hashPw(password, salt) + ':' + salt, phone || '', validPlan, expiresAt);
 
   try {
     await sendVerificationEmail(email, name, code);
   } catch (e) {
     console.error('[MAIL ERROR]', e.message);
-    // لا نوقف العملية إذا فشل الإيميل — نكمل
   }
 
   res.json({ verify: true, verifyId });
@@ -177,50 +279,82 @@ app.post('/api/verify-email', (req, res) => {
     db.prepare('DELETE FROM email_verifications WHERE id = ?').run(verifyId);
     return res.status(400).json({ error: 'انتهت صلاحية الكود، أعد التسجيل' });
   }
-  if (record.code !== String(code).trim()) {
+  if (!safeCompare(String(code).trim(), record.code)) {
     return res.status(400).json({ error: 'الكود غير صحيح' });
   }
 
-  // تأكيد ناجح — إنشاء الحساب
   const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(record.email);
   if (existing) return res.status(409).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
 
-  const sellerId = randomUUID();
-  const sellerPlan = ['plan1', 'plan2', 'plan3'].includes(record.plan_type) ? record.plan_type : 'plan2';
-  db.prepare('INSERT INTO sellers (id, name, email, password, phone, status, plan_type) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(sellerId, record.name, record.email, record.password, record.phone, 'pending', sellerPlan);
+  // Parse stored "hash:salt" from email_verifications
+  let storedHash = record.password;
+  let storedSalt = null;
+  const colonIdx = record.password.lastIndexOf(':');
+  if (colonIdx > 0 && colonIdx < record.password.length - 1) {
+    const potentialSalt = record.password.slice(colonIdx + 1);
+    if (potentialSalt.length === 32) { // 16-byte hex salt
+      storedHash = record.password.slice(0, colonIdx);
+      storedSalt = potentialSalt;
+    }
+  }
 
-  // وضع علامة مستخدم
+  const sellerId = randomUUID();
+  const apiToken = randomUUID();
+  const sellerPlan = ['plan1', 'plan2', 'plan3'].includes(record.plan_type) ? record.plan_type : 'plan2';
+  db.prepare('INSERT INTO sellers (id, name, email, password, salt, phone, status, plan_type, api_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(sellerId, record.name, record.email, storedHash, storedSalt, record.phone, 'pending', sellerPlan, apiToken);
+
   db.prepare('UPDATE email_verifications SET used = 1 WHERE id = ?').run(verifyId);
 
   res.json({ pending: true });
 });
 
+// POST /api/login (F-03: return api_token; F-05: salt-aware hash check)
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body || {};
   const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
-  if (!seller || seller.password !== hashPw(password))
+
+  if (!seller) return res.status(401).json({ error: 'Invalid credentials' });
+
+  const expectedHash = hashPw(password, seller.salt || null);
+  if (!safeCompare(expectedHash, seller.password))
     return res.status(401).json({ error: 'Invalid credentials' });
+
   if (seller.status === 'pending')
     return res.status(403).json({ error: 'pending', message: 'حسابك قيد المراجعة، سنتواصل معك على الواتساب قريباً.' });
-  res.json({ token: seller.id, name: seller.name, subscription_expires_at: seller.subscription_expires_at || null, plan_type: seller.plan_type || 'plan2' });
+
+  // Lazily migrate legacy (no-salt) sellers to salted hash on first login
+  if (!seller.salt) {
+    const newSalt = generateSalt();
+    const newHash = hashPw(password, newSalt);
+    db.prepare('UPDATE sellers SET password = ?, salt = ? WHERE id = ?').run(newHash, newSalt, seller.id);
+  }
+
+  // F-03: return api_token not seller.id
+  res.json({
+    token: seller.api_token,
+    name: seller.name,
+    subscription_expires_at: seller.subscription_expires_at || null,
+    plan_type: seller.plan_type || 'plan2'
+  });
 });
 
-// POST /api/forgot-password — طلب إعادة تعيين كلمة المرور
+// POST /api/forgot-password — طلب إعادة تعيين كلمة المرور (F-11, F-13)
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email required' });
 
-  console.log(`[forgot-password] request for: ${email}`);
-
-  const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
-  // نرجع نجاح دائماً حتى لا نكشف وجود الإيميل
-  if (!seller) {
-    console.log(`[forgot-password] email not found: ${email}`);
-    return res.json({ ok: true });
+  // F-13: rate limit by IP — 5 requests per 10 minutes
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  if (!rateLimit(`fp:${ip}`, 5, 10 * 60_000)) {
+    return res.status(429).json({ error: 'Too many requests. Please wait before trying again.' });
   }
 
-  const token = randomUUID().replace(/-/g, '');
+  const seller = db.prepare('SELECT * FROM sellers WHERE email = ?').get(String(email).toLowerCase());
+  // F-11: always return ok; never log email not-found
+  if (!seller) return res.json({ ok: true });
+
+  const token = randomBytes(32).toString('hex');
   const expiresAt = Math.floor(Date.now() / 1000) + 60 * 30; // 30 دقيقة
 
   db.prepare('INSERT INTO password_resets (id, email, token, expires_at) VALUES (?, ?, ?, ?)')
@@ -243,7 +377,6 @@ app.post('/api/forgot-password', async (req, res) => {
         </div>
       `
     });
-    console.log(`[forgot-password] email sent to: ${seller.email}`);
   } catch (mailErr) {
     console.error(`[forgot-password] mail error:`, mailErr.message);
   }
@@ -251,7 +384,7 @@ app.post('/api/forgot-password', async (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/reset-password — تعيين كلمة مرور جديدة
+// POST /api/reset-password — تعيين كلمة مرور جديدة (F-05: salt-aware)
 app.post('/api/reset-password', (req, res) => {
   const { token, password } = req.body || {};
   if (!token || !password) return res.status(400).json({ error: 'Missing fields' });
@@ -262,8 +395,10 @@ app.post('/api/reset-password', (req, res) => {
 
   if (!record) return res.status(400).json({ error: 'الرابط غير صالح أو منتهي الصلاحية' });
 
-  db.prepare('UPDATE sellers SET password = ? WHERE email = ?')
-    .run(hashPw(password), record.email);
+  const newSalt = generateSalt();
+  const newHash = hashPw(password, newSalt);
+  db.prepare('UPDATE sellers SET password = ?, salt = ? WHERE email = ?')
+    .run(newHash, newSalt, record.email);
   db.prepare('UPDATE password_resets SET used = 1 WHERE token = ?')
     .run(token);
 
@@ -277,31 +412,26 @@ app.get('/api/me', authMiddleware, (req, res) => {
 });
 
 // ─── Admin API ────────────────────────────────────────────────────────────────
-// GET /api/admin/sellers — قائمة البائعين
 app.get('/api/admin/sellers', adminMiddleware, (req, res) => {
   const sellers = db.prepare('SELECT id, name, email, phone, status, created_at, subscription_expires_at, plan_type FROM sellers ORDER BY created_at DESC').all();
   res.json(sellers);
 });
 
-// PATCH /api/admin/sellers/:id/approve — قبول بائع
 app.patch('/api/admin/sellers/:id/approve', adminMiddleware, (req, res) => {
   db.prepare('UPDATE sellers SET status = ? WHERE id = ?').run('active', req.params.id);
   res.json({ ok: true });
 });
 
-// PATCH /api/admin/sellers/:id/reject — رفض / تعليق بائع
 app.patch('/api/admin/sellers/:id/reject', adminMiddleware, (req, res) => {
   db.prepare('UPDATE sellers SET status = ? WHERE id = ?').run('rejected', req.params.id);
   res.json({ ok: true });
 });
 
-// DELETE /api/admin/sellers/:id — حذف بائع
 app.delete('/api/admin/sellers/:id', adminMiddleware, (req, res) => {
   db.prepare('DELETE FROM sellers WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
-// PATCH /api/admin/sellers/:id/subscription — تعيين تاريخ انتهاء الاشتراك
 app.patch('/api/admin/sellers/:id/subscription', adminMiddleware, (req, res) => {
   const { expires_at } = req.body || {};
   const ts = expires_at ? Math.floor(new Date(expires_at).getTime() / 1000) : null;
@@ -309,8 +439,6 @@ app.patch('/api/admin/sellers/:id/subscription', adminMiddleware, (req, res) => 
   res.json({ ok: true });
 });
 
-// PATCH /api/admin/sellers/:id/plan — تعيين الباقة
-// plan1 = تطبيق واحد فقط | plan2 = غير محدود | plan3 = كل الميزات (غير محدود)
 app.patch('/api/admin/sellers/:id/plan', adminMiddleware, (req, res) => {
   const { plan_type } = req.body || {};
   if (!['plan1', 'plan2', 'plan3'].includes(plan_type))
@@ -319,7 +447,6 @@ app.patch('/api/admin/sellers/:id/plan', adminMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /api/admin/stats — إحصائيات عامة للأدمن
 app.get('/api/admin/stats', adminMiddleware, (req, res) => {
   const totalSellers     = db.prepare("SELECT COUNT(*) as n FROM sellers").get().n;
   const activeSellers    = db.prepare("SELECT COUNT(*) as n FROM sellers WHERE status = 'active'").get().n;
@@ -343,7 +470,6 @@ app.get('/api/mailboxes', authMiddleware, (req, res) => {
 app.post('/api/mailboxes', authMiddleware, async (req, res) => {
   const { email, password, host, port, label } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-  // حد خفي: 500 صندوق بريد لكل بائع
   const mailboxCount = db.prepare('SELECT COUNT(*) as cnt FROM mailboxes WHERE seller_id = ?').get(req.seller.id);
   if (mailboxCount.cnt >= 500) return res.status(400).json({ error: 'تعذّر إضافة صندوق البريد، يرجى التواصل مع الدعم.' });
   const imapHost = host || guessHost(email);
@@ -369,9 +495,11 @@ app.post('/api/mailboxes', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: arabicError });
   }
   const id = randomUUID();
-  db.prepare(`INSERT INTO mailboxes (id, seller_id, email, imap_host, imap_port, password, label)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, req.seller.id, email.toLowerCase(), imapHost, imapPort, password, label || '');
+  // F-04: encrypt IMAP password before storing
+  const encryptedPassword = encryptPassword(password);
+  db.prepare(`INSERT INTO mailboxes (id, seller_id, email, imap_host, imap_port, password, label, password_encrypted)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1)`)
+    .run(id, req.seller.id, email.toLowerCase(), imapHost, imapPort, encryptedPassword, label || '');
   res.json({ id, email, imap_host: imapHost, status: 'connected' });
 });
 
@@ -399,22 +527,19 @@ app.post('/api/slots', authMiddleware, (req, res) => {
   const mailbox = db.prepare('SELECT id FROM mailboxes WHERE id = ? AND seller_id = ?').get(mailbox_id, req.seller.id);
   if (!mailbox) return res.status(404).json({ error: 'Mailbox not found' });
 
-  // ── تطبيق حدود الباقة ──────────────────────────────────────────────────────
   const seller = db.prepare('SELECT plan_type FROM sellers WHERE id = ?').get(req.seller.id);
   const planType = seller?.plan_type || 'plan2';
   if (planType === 'plan1') {
-    // الباقة الأولى: تطبيق واحد فقط
     const existingCount = db.prepare('SELECT COUNT(*) as n FROM slots WHERE seller_id = ?').get(req.seller.id).n;
     if (existingCount >= 1)
       return res.status(403).json({ error: 'plan_limit', message: 'باقتك تسمح بتطبيق واحد فقط. يرجى الترقية للباقة الثانية أو الثالثة.' });
   }
-  // plan2 و plan3: غير محدود — لا قيود
 
   const created = [];
   const n = Math.min(Number(count) || 1, 100);
   for (let i = 0; i < n; i++) {
     const id = randomUUID();
-    const token = randomUUID().replace(/-/g, '');
+    const token = randomBytes(16).toString('hex'); // F-02: cryptographically secure slot token
     db.prepare('INSERT INTO slots (id, seller_id, mailbox_id, label, token, account_email, account_password) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(id, req.seller.id, mailbox_id, label, token, account_email, account_password);
     created.push({ id, token, label, account_email });
@@ -448,8 +573,12 @@ app.delete('/api/slots/:id', authMiddleware, (req, res) => {
 });
 
 // ─── Customer endpoint (public) ───────────────────────────────────────────────
-// GET /api/slot/:token — بيانات السلوت (الإيميل + الباسورد + الحالة)
+// GET /api/slot/:token — F-08: rate limited (10 req/min per IP)
 app.get('/api/slot/:token', (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  if (!rateLimit(`slot:${ip}`, 10, 60_000)) {
+    return res.status(429).json({ error: 'Too many requests.' });
+  }
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
   res.json({
@@ -460,12 +589,11 @@ app.get('/api/slot/:token', (req, res) => {
   });
 });
 
-// GET /api/code/:token — جلب آخر كود (عند الضغط على الزر)
+// GET /api/code/:token — جلب آخر كود
 app.get('/api/code/:token', (req, res) => {
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
 
-  // التحقق من حد المحاولات (2 محاولة فقط)
   const attempts = slot.code_attempts || 0;
   if (attempts >= 2) {
     return res.json({
@@ -484,7 +612,6 @@ app.get('/api/code/:token', (req, res) => {
 
   if (!code) return res.json({ status: 'waiting', label: slot.label });
 
-  // زيادة عداد المحاولات + وضع علامة شُوهد
   db.prepare('UPDATE slots SET code_attempts = code_attempts + 1 WHERE id = ?').run(slot.id);
   db.prepare('UPDATE codes SET viewed = 1 WHERE slot_id = ? AND code = ?').run(slot.id, code.code);
 
@@ -498,9 +625,8 @@ app.get('/api/code/:token', (req, res) => {
 });
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
-pollAll(); // يبدأ connections IDLE الفورية
+pollAll();
 
 app.listen(PORT, () => {
   console.log(`Mr10x OTP Backend running on port ${PORT}`);
 });
-

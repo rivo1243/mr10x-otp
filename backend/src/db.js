@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../../data');
@@ -82,7 +83,7 @@ db.exec(`
   );
 `);
 
-// Migrations: إضافة حقول جديدة للجداول القديمة
+// ── Migrations ────────────────────────────────────────────────────────────────
 try { db.exec(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE sellers ADD COLUMN phone TEXT DEFAULT ''`); } catch {}
@@ -92,5 +93,22 @@ try { db.exec(`ALTER TABLE sellers ADD COLUMN subscription_expires_at INTEGER DE
 // plan_type: 'plan1' = 1 slot فقط | 'plan2' = غير محدود | 'plan3' = كل الميزات (غير محدود)
 try { db.exec(`ALTER TABLE sellers ADD COLUMN plan_type TEXT DEFAULT 'plan2'`); } catch {}
 try { db.exec(`ALTER TABLE email_verifications ADD COLUMN plan_type TEXT DEFAULT 'plan2'`); } catch {}
+
+// F-03: separate api_token column so the seller's UUID is not used as auth token
+try { db.exec(`ALTER TABLE sellers ADD COLUMN api_token TEXT`); } catch {}
+try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_api_token ON sellers(api_token)`); } catch {}
+
+// Populate api_token for existing sellers that have none
+const sellersWithoutToken = db.prepare("SELECT id FROM sellers WHERE api_token IS NULL").all();
+const fillToken = db.prepare("UPDATE sellers SET api_token = ? WHERE id = ?");
+for (const s of sellersWithoutToken) {
+  fillToken.run(randomUUID(), s.id);
+}
+
+// F-05: per-user salt for password hashing
+try { db.exec(`ALTER TABLE sellers ADD COLUMN salt TEXT DEFAULT NULL`); } catch {}
+
+// F-04: flag whether mailbox password is encrypted
+try { db.exec(`ALTER TABLE mailboxes ADD COLUMN password_encrypted INTEGER DEFAULT 0`); } catch {}
 
 export default db;
