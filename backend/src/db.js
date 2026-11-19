@@ -118,6 +118,17 @@ try { db.exec(`ALTER TABLE slots ADD COLUMN account_password_encrypted INTEGER D
 try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_slots_token ON slots(token)`); } catch {}
 try { db.exec(`CREATE INDEX IF NOT EXISTS idx_codes_slot_id ON codes(slot_id)`); } catch {}
 
+// Webhook forwarding — each mailbox gets a unique inbound token
+try { db.exec(`ALTER TABLE mailboxes ADD COLUMN webhook_token TEXT`); } catch {}
+try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_mailboxes_webhook_token ON mailboxes(webhook_token)`); } catch {}
+
+// Populate webhook_token for existing mailboxes that have none
+const mailboxesWithoutToken = db.prepare("SELECT id FROM mailboxes WHERE webhook_token IS NULL").all();
+const fillWebhookToken = db.prepare("UPDATE mailboxes SET webhook_token = ? WHERE id = ?");
+for (const m of mailboxesWithoutToken) {
+  fillWebhookToken.run(randomUUID(), m.id);
+}
+
 // F-11: clean up stale verification and reset records (older than 24h past expiry)
 db.prepare('DELETE FROM email_verifications WHERE expires_at < unixepoch() - 86400').run();
 db.prepare('DELETE FROM password_resets WHERE expires_at < unixepoch() - 86400').run();

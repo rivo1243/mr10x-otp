@@ -540,40 +540,26 @@
 <!-- ── Add Mailbox Modal ── -->
 <div class="modal-overlay" id="add-mailbox-modal">
   <div class="modal">
-    <h3>ربط صندوق إيميل جديد</h3>
+    <h3>إضافة صندوق إيميل</h3>
     <div class="form-group">
       <label>البريد الإلكتروني</label>
       <input type="email" id="mb-email" placeholder="user@gmail.com" dir="ltr">
     </div>
     <div class="form-group">
-      <label>كلمة المرور / App Password</label>
-      <input type="password" id="mb-pass" placeholder="••••••••" dir="ltr">
-      <div id="gmail-hint" class="gmail-hint" style="display:none">
-        ⚠️ Gmail لا يقبل كلمة المرور العادية — تحتاج <b>App Password</b>:
-        <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">أنشئها هنا</a>
-        (فعّل التحقق بخطوتين أولاً)
-      </div>
-    </div>
-    <div class="form-group">
       <label>وصف (اختياري)</label>
       <input type="text" id="mb-label" placeholder="مثال: حساب Netflix الرئيسي">
     </div>
-    <span class="details-toggle" onclick="toggleAdvanced()">▸ إعدادات متقدمة (IMAP)</span>
-    <div class="advanced" id="advanced-fields">
-      <div class="form-group" style="margin-top:12px">
-        <label>IMAP Host</label>
-        <input type="text" id="mb-host" placeholder="imap.gmail.com" dir="ltr">
-      </div>
-      <div class="form-group">
-        <label>Port</label>
-        <input type="number" id="mb-port" placeholder="993" dir="ltr">
-      </div>
+    <div style="margin-top:16px;padding:12px 14px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:10px;font-size:13px;line-height:1.7;color:var(--muted)">
+      <div style="font-weight:600;color:var(--fg);margin-bottom:6px">📬 بعد الإضافة — اضبط التوجيه في Gmail:</div>
+      <div>١. افتح <b>Gmail → Settings → See all settings → Forwarding and POP/IMAP</b></div>
+      <div>٢. اضغط <b>Add a forwarding address</b> وأدخل رابط الـ Webhook الظاهر في البطاقة</div>
+      <div>٣. تأكيد الرابط ثم فعّل <b>Forward a copy of incoming mail</b></div>
     </div>
     <div id="mb-err" class="error-msg"></div>
-    <div id="mb-ok" class="success-msg">تم الربط بنجاح ✓</div>
+    <div id="mb-ok" class="success-msg">تمت الإضافة ✓</div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('add-mailbox-modal')">إلغاء</button>
-      <button class="btn btn-primary" onclick="addMailbox()">ربط الصندوق</button>
+      <button class="btn btn-primary" onclick="addMailbox()">إضافة الصندوق</button>
     </div>
   </div>
 </div>
@@ -999,39 +985,34 @@ async function loadMailboxes() {
 
   const list = document.getElementById('mailboxes-list');
   if (!data.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>لا توجد صناديق إيميل مربوطة بعد</div>';
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>لا توجد صناديق إيميل مضافة بعد</div>';
     return;
   }
+  const baseUrl = location.origin;
   list.innerHTML = data.map(mb => {
-    const isGmail = mb.email.includes('@gmail.') || mb.email.includes('@googlemail.');
+    const webhookUrl = mb.webhook_token ? `${baseUrl}/api/inbound/${mb.webhook_token}` : '';
+    const isActive = mb.status === 'active';
+    const lastSync = mb.last_sync ? new Date(mb.last_sync * 1000).toLocaleString('ar-SA') : null;
     return `
-    <div class="item-card" id="mb-card-${mb.id}">
-      <div class="info">
-        <div class="title">${escapeHtml(mb.email)}</div>
-        <div class="meta">${escapeHtml(mb.imap_host)} ${mb.label ? '· ' + escapeHtml(mb.label) : ''}</div>
-      </div>
-      <span class="badge ${mb.status === 'connected' ? 'badge-green' : 'badge-red'}">
-        ${mb.status === 'connected' ? 'متصل' : 'خطأ'}
-      </span>
-      ${mb.last_error ? `<span style="font-size:11px;color:var(--red);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(mb.last_error)}">${escapeHtml(mb.last_error.slice(0,40))}</span>` : ''}
-      <button class="btn btn-sm" id="reconnect-btn-${mb.id}" style="background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.25)" onclick="reconnectMailbox('${mb.id}')">🔄 تحديث الاتصال</button>
-      <button class="btn btn-sm" style="background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border)" onclick="toggleUpdatePassRow('${mb.id}')">🔑 تغيير كلمة المرور</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteMailbox('${mb.id}')">حذف</button>
-      <div id="reconnect-err-${mb.id}" style="display:none;width:100%;margin-top:8px;padding:8px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:6px;font-size:12px;color:#fca5a5;line-height:1.5"></div>
-      <div id="upd-row-${mb.id}" style="display:none;width:100%;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07)">
-        ${isGmail ? `<div style="font-size:12px;color:#fbbf24;margin-bottom:8px;padding:8px 10px;background:rgba(251,191,36,0.08);border-radius:6px;border:1px solid rgba(251,191,36,0.2)">
-          ⚠️ Gmail يطلب <b>App Password</b> — <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" style="color:#818cf8">أنشئها هنا</a> (فعّل التحقق بخطوتين أولاً)
-        </div>` : ''}
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="password" id="upd-input-${mb.id}" placeholder="كلمة المرور الجديدة / App Password"
-            dir="ltr" style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:14px"
-            onkeyup="if(event.key==='Enter')saveUpdatePassInline('${mb.id}')">
-          <button class="btn btn-primary btn-sm" id="upd-btn-${mb.id}" onclick="saveUpdatePassInline('${mb.id}')">حفظ</button>
-          <button class="btn btn-ghost btn-sm" onclick="toggleUpdatePassRow('${mb.id}')">إلغاء</button>
+    <div class="item-card" id="mb-card-${mb.id}" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div class="info" style="flex:1">
+          <div class="title">${escapeHtml(mb.email)}</div>
+          <div class="meta">${mb.label ? escapeHtml(mb.label) + ' · ' : ''}${lastSync ? 'آخر إيميل: ' + lastSync : 'لم يصل إيميل بعد'}</div>
         </div>
-        <div id="upd-err-${mb.id}" style="display:none;font-size:12px;color:var(--red);margin-top:6px"></div>
-        <div id="upd-ok-${mb.id}" style="display:none;font-size:12px;color:#4ade80;margin-top:6px">✓ تم تحديث كلمة المرور</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge ${isActive ? 'badge-green' : 'badge-yellow'}">
+            ${isActive ? 'نشط' : 'ينتظر'}
+          </span>
+          <button class="btn btn-danger btn-sm" onclick="deleteMailbox('${mb.id}')">حذف</button>
+        </div>
       </div>
+      ${webhookUrl ? `
+      <div style="font-size:12px;color:var(--muted);margin-bottom:2px">🔗 رابط التوجيه (Webhook) — أضفه في Gmail Forwarding:</div>
+      <div class="token-box" onclick="copyWebhook('${escapeHtml(webhookUrl)}')" style="cursor:pointer">
+        <span style="font-size:11px;word-break:break-all" dir="ltr">${escapeHtml(webhookUrl)}</span>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1082,25 +1063,13 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function openAddMailbox() {
-  ['mb-email','mb-pass','mb-label','mb-host','mb-port'].forEach(id => document.getElementById(id).value = '');
+  ['mb-email','mb-label'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('mb-err').style.display = 'none';
   document.getElementById('mb-ok').style.display = 'none';
-  document.getElementById('gmail-hint').style.display = 'none';
-  document.getElementById('advanced-fields').classList.remove('open');
   openModal('add-mailbox-modal');
 }
 
-// إظهار تنبيه Gmail عند الكتابة
 document.addEventListener('DOMContentLoaded', () => {
-  const mbEmail = document.getElementById('mb-email');
-  if (mbEmail) {
-    mbEmail.addEventListener('input', () => {
-      const val = mbEmail.value.toLowerCase();
-      const isGmail = val.includes('@gmail.') || val.includes('@googlemail.');
-      document.getElementById('gmail-hint').style.display = isGmail ? 'block' : 'none';
-    });
-  }
-
   // إذا جاء من landing.html بـ ?register=1 يفتح وضع التسجيل تلقائياً
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('register') === '1' && !isRegister) {
@@ -1114,32 +1083,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-function toggleAdvanced() {
-  const el = document.getElementById('advanced-fields');
-  el.classList.toggle('open');
-  document.querySelector('.details-toggle').textContent =
-    el.classList.contains('open') ? '▾ إعدادات متقدمة (IMAP)' : '▸ إعدادات متقدمة (IMAP)';
-}
-
 async function addMailbox() {
   const email = document.getElementById('mb-email').value.trim();
-  const password = document.getElementById('mb-pass').value;
   const label = document.getElementById('mb-label').value.trim();
-  const host = document.getElementById('mb-host').value.trim();
-  const port = document.getElementById('mb-port').value;
   const errEl = document.getElementById('mb-err');
   const okEl = document.getElementById('mb-ok');
   errEl.style.display = 'none'; okEl.style.display = 'none';
 
-  if (!email || !password) { errEl.textContent = 'الإيميل وكلمة المرور مطلوبان'; errEl.style.display = 'block'; return; }
+  if (!email) { errEl.textContent = 'البريد الإلكتروني مطلوب'; errEl.style.display = 'block'; return; }
 
   try {
     const r = await apiFetch('/api/mailboxes', {
       method: 'POST',
-      body: JSON.stringify({ email, password, host: host || undefined, port: port || undefined, label })
+      body: JSON.stringify({ email, label })
     });
     const data = await r.json();
-    if (!r.ok) { errEl.textContent = data.error || 'فشل الربط'; errEl.style.display = 'block'; return; }
+    if (!r.ok) { errEl.textContent = data.error || 'فشل الإضافة'; errEl.style.display = 'block'; return; }
     okEl.style.display = 'block';
     setTimeout(() => { closeModal('add-mailbox-modal'); loadMailboxes(); }, 1200);
   } catch(e) {
@@ -1154,78 +1113,8 @@ async function deleteMailbox(id) {
   loadAll();
 }
 
-async function reconnectMailbox(id) {
-  const btn = document.getElementById('reconnect-btn-' + id);
-  const errEl = document.getElementById('reconnect-err-' + id);
-  if (errEl) errEl.style.display = 'none';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ الاتصال...'; }
-  try {
-    const r = await apiFetch('/api/mailboxes/' + id + '/reconnect', { method: 'POST' });
-    const data = await r.json();
-    if (!r.ok) {
-      if (errEl) { errEl.textContent = data.error || 'تعذّر إعادة الاتصال'; errEl.style.display = 'block'; }
-      if (btn) { btn.disabled = false; btn.textContent = '🔄 تحديث الاتصال'; }
-      return;
-    }
-    if (btn) { btn.textContent = '✓ تم الاتصال'; }
-    setTimeout(() => loadAll(), 1500);
-  } catch (e) {
-    if (errEl) { errEl.textContent = 'خطأ في الاتصال بالخادم'; errEl.style.display = 'block'; }
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 تحديث الاتصال'; }
-  }
-}
-
-function toggleUpdatePassRow(id) {
-  const row = document.getElementById('upd-row-' + id);
-  if (!row) return;
-  const isOpen = row.style.display !== 'none';
-  row.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) {
-    const input = document.getElementById('upd-input-' + id);
-    if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
-    const errEl = document.getElementById('upd-err-' + id);
-    const okEl = document.getElementById('upd-ok-' + id);
-    if (errEl) errEl.style.display = 'none';
-    if (okEl) okEl.style.display = 'none';
-  }
-}
-
-async function saveUpdatePassInline(id) {
-  const input = document.getElementById('upd-input-' + id);
-  const errEl = document.getElementById('upd-err-' + id);
-  const okEl = document.getElementById('upd-ok-' + id);
-  const btn = document.getElementById('upd-btn-' + id);
-  if (!input) return;
-
-  const password = input.value.trim();
-  errEl.style.display = 'none';
-  okEl.style.display = 'none';
-
-  if (!password) { errEl.textContent = 'أدخل كلمة المرور الجديدة'; errEl.style.display = 'block'; return; }
-
-  btn.disabled = true;
-  btn.textContent = 'جارٍ التحقق...';
-  try {
-    const r = await apiFetch('/api/mailboxes/' + id + '/password', {
-      method: 'PATCH',
-      body: JSON.stringify({ password })
-    });
-    const data = await r.json();
-    if (!r.ok) {
-      errEl.textContent = data.error || 'فشل التحديث';
-      errEl.style.display = 'block';
-      return;
-    }
-    okEl.style.display = 'block';
-    input.value = '';
-    setTimeout(() => { loadMailboxes(); }, 1500);
-  } catch(e) {
-    errEl.textContent = 'تعذر الاتصال بالسيرفر';
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'تحديث';
-  }
+function copyWebhook(url) {
+  navigator.clipboard.writeText(url).then(() => toast('تم نسخ رابط الـ Webhook ✓'));
 }
 
 function autoFillSlotEmail() {

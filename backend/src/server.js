@@ -5,9 +5,9 @@ import { randomUUID, randomInt, randomBytes, createHash, pbkdf2Sync, timingSafeE
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import db from './db.js';
-import { guessHost, testConnection } from './imap.js';
-import { pollAll, disconnectMailbox } from './poller.js';
+import { pollAll } from './poller.js';
 import { encryptPassword, decryptPassword } from './crypto-utils.js';
+import { extractCode } from './extract.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -24,6 +24,9 @@ if (CORS_ORIGIN) {
 }
 // F-02: cap request body at 64 KB to prevent DoS via large payloads
 app.use(express.json({ limit: '64kb' }));
+// للـ webhook: قبول plain-text و form-encoded أيضاً
+app.use('/api/inbound', express.text({ limit: '64kb' }));
+app.use('/api/inbound', express.urlencoded({ extended: false, limit: '64kb' }));
 // F-03: security headers (without helmet — no network access)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -554,47 +557,23 @@ app.get('/api/admin/stats', adminMiddleware, (req, res) => {
 
 // ─── Mailboxes ─────────────────────────────────────────────────────────────────
 app.get('/api/mailboxes', authMiddleware, (req, res) => {
-  const rows = db.prepare('SELECT id, email, imap_host, imap_port, label, status, last_sync, last_error FROM mailboxes WHERE seller_id = ?')
+  const rows = db.prepare('SELECT id, email, label, status, last_sync, last_error, webhook_token FROM mailboxes WHERE seller_id = ?')
     .all(req.seller.id);
   res.json(rows);
 });
 
-app.post('/api/mailboxes', authMiddleware, async (req, res) => {
-  const { email, password, host, port, label } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+// إضافة صندوق جديد — webhook فقط، لا كلمة مرور
+app.post('/api/mailboxes', authMiddleware, (req, res) => {
+  const { email, label } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'البريد الإلكتروني مطلوب' });
   const mailboxCount = db.prepare('SELECT COUNT(*) as cnt FROM mailboxes WHERE seller_id = ?').get(req.seller.id);
   if (mailboxCount.cnt >= 500) return res.status(400).json({ error: 'تعذّر إضافة صندوق البريد، يرجى التواصل مع الدعم.' });
-  const imapHost = host || guessHost(email);
-  const imapPort = Number(port) || 993;
-  try {
-    await testConnection(email, password, imapHost, imapPort);
-  } catch (e) {
-    const msg = e.message;
-    let arabicError;
-    if (msg === 'AUTH_FAIL:GMAIL') {
-      arabicError = 'فشل تسجيل الدخول — Gmail يطلب App Password (كلمة مرور التطبيقات) وليس كلمة مرورك العادية. اذهب إلى myaccount.google.com/apppasswords وأنشئ كلمة مرور جديدة واستخدمها هنا.';
-    } else if (msg === 'AUTH_FAIL:OUTLOOK') {
-      arabicError = 'فشل تسجيل الدخول — تأكد من تفعيل IMAP في إعدادات Outlook، وأنك تستخدم كلمة المرور الصحيحة.';
-    } else if (msg === 'AUTH_FAIL:YAHOO') {
-      arabicError = 'فشل تسجيل الدخول — Yahoo يطلب App Password. اذهب إلى إعدادات الحساب في Yahoo وأنشئ كلمة مرور للتطبيقات.';
-    } else if (msg === 'AUTH_FAIL:GENERIC') {
-      arabicError = 'كلمة المرور أو الإيميل غير صحيحة. تأكد من بيانات الدخول.';
-    } else if (msg === 'CONN_FAIL') {
-      arabicError = 'تعذّر الاتصال بالسيرفر — تأكد من صحة عنوان IMAP والـ Port.';
-    } else {
-      // X-04: never expose raw IMAP error message — it may leak internal server info
-      arabicError = 'تعذّر الاتصال بالسيرفر — تحقق من بيانات IMAP وحاول مرة أخرى.';
-      console.error('[IMAP testConnection] unexpected error:', msg);
-    }
-    return res.status(400).json({ error: arabicError });
-  }
   const id = randomUUID();
-  // F-04: encrypt IMAP password before storing
-  const encryptedPassword = encryptPassword(password);
-  db.prepare(`INSERT INTO mailboxes (id, seller_id, email, imap_host, imap_port, password, label, password_encrypted)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1)`)
-    .run(id, req.seller.id, email.toLowerCase(), imapHost, imapPort, encryptedPassword, label || '');
-  res.json({ id, email, imap_host: imapHost, status: 'connected' });
+  const webhookToken = randomUUID();
+  db.prepare(`INSERT INTO mailboxes (id, seller_id, email, imap_host, imap_port, password, label, status, webhook_token)
+    VALUES (?, ?, ?, '', 993, '', ?, 'active', ?)`)
+    .run(id, req.seller.id, email.toLowerCase().trim(), label || '', webhookToken);
+  res.json({ id, email, label: label || '', status: 'active', webhook_token: webhookToken });
 });
 
 app.delete('/api/mailboxes/:id', authMiddleware, (req, res) => {
@@ -602,86 +581,72 @@ app.delete('/api/mailboxes/:id', authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
-// تحديث كلمة مرور صندوق بريد موجود (بدون حذف أو إعادة ربط)
-app.patch('/api/mailboxes/:id/password', authMiddleware, async (req, res) => {
-  const { password } = req.body || {};
-  if (!password) return res.status(400).json({ error: 'كلمة المرور مطلوبة' });
+// ─── Inbound Webhook ───────────────────────────────────────────────────────────
+// Gmail / أي خدمة توجيه تُرسل الإيميل الوارد هنا كـ POST
+// محتوى الطلب: نص الإيميل (plain-text أو HTML) في body.text / body.html / raw body
+app.post('/api/inbound/:token', (req, res) => {
+  const mailbox = db.prepare('SELECT * FROM mailboxes WHERE webhook_token = ?').get(req.params.token);
+  if (!mailbox) return res.status(404).json({ error: 'Invalid token' });
 
-  const mailbox = db.prepare('SELECT * FROM mailboxes WHERE id = ? AND seller_id = ?')
-    .get(req.params.id, req.seller.id);
-  if (!mailbox) return res.status(404).json({ error: 'الصندوق غير موجود' });
+  // استخراج نص الإيميل من أي صيغة ترسلها خدمة التوجيه
+  let subject = '';
+  let body = '';
 
-  try {
-    await testConnection(mailbox.email, password, mailbox.imap_host, Number(mailbox.imap_port) || 993);
-  } catch (e) {
-    const msg = e.message;
-    let arabicError;
-    if (msg === 'AUTH_FAIL:GMAIL') {
-      arabicError = 'فشل تسجيل الدخول — Gmail يطلب App Password (كلمة مرور التطبيقات) وليس كلمة مرورك العادية. اذهب إلى myaccount.google.com/apppasswords وأنشئ كلمة مرور جديدة واستخدمها هنا.';
-    } else if (msg === 'AUTH_FAIL:OUTLOOK') {
-      arabicError = 'فشل تسجيل الدخول — تأكد من تفعيل IMAP في إعدادات Outlook، وأنك تستخدم كلمة المرور الصحيحة.';
-    } else if (msg === 'AUTH_FAIL:YAHOO') {
-      arabicError = 'فشل تسجيل الدخول — Yahoo يطلب App Password. اذهب إلى إعدادات الحساب في Yahoo وأنشئ كلمة مرور للتطبيقات.';
-    } else if (msg === 'AUTH_FAIL:GENERIC') {
-      arabicError = 'كلمة المرور أو الإيميل غير صحيحة. تأكد من بيانات الدخول.';
-    } else if (msg === 'CONN_FAIL') {
-      arabicError = 'تعذّر الاتصال بالسيرفر — تأكد من صحة عنوان IMAP والـ Port.';
-    } else {
-      arabicError = 'تعذّر الاتصال بالسيرفر — تحقق من بيانات IMAP وحاول مرة أخرى.';
-      console.error('[IMAP updatePassword] unexpected error:', msg);
-    }
-    return res.status(400).json({ error: arabicError });
+  const ct = (req.headers['content-type'] || '').toLowerCase();
+
+  if (ct.includes('application/json')) {
+    // بعض الخدمات ترسل JSON: { subject, text, html, body, plain, ... }
+    const p = req.body || {};
+    subject = String(p.subject || p.Subject || '');
+    body = String(p.text || p.plain || p.body || p.html || '');
+  } else {
+    // plain text / form-encoded / raw
+    body = String(req.body?.text || req.body?.body || '');
+    subject = String(req.body?.subject || '');
   }
 
-  // تحديث كلمة المرور المشفرة في قاعدة البيانات
-  const encryptedPassword = encryptPassword(password);
-  db.prepare(`UPDATE mailboxes SET password = ?, password_encrypted = 1,
-    status = 'connected', last_error = NULL WHERE id = ?`)
-    .run(encryptedPassword, mailbox.id);
-
-  // قطع الاتصال الحالي لإجبار الـ poller على إعادة الاتصال بالكلمة الجديدة
-  await disconnectMailbox(mailbox.id);
-
-  res.json({ ok: true });
-});
-
-// إعادة ربط صندوق بريد بالكلمة المحفوظة (بدون إدخال كلمة مرور جديدة)
-app.post('/api/mailboxes/:id/reconnect', authMiddleware, async (req, res) => {
-  const mailbox = db.prepare('SELECT * FROM mailboxes WHERE id = ? AND seller_id = ?')
-    .get(req.params.id, req.seller.id);
-  if (!mailbox) return res.status(404).json({ error: 'الصندوق غير موجود' });
-
-  let plainPass;
-  try {
-    plainPass = decryptPassword(mailbox.password);
-  } catch {
-    return res.status(400).json({ error: 'تعذّر فك تشفير كلمة المرور — أعد تعيينها من زر "تحديث كلمة المرور".' });
+  // إذا body فارغ ولكن المحتوى الخام موجود (content-type: text/plain)
+  if (!body && typeof req.body === 'string') {
+    body = req.body;
   }
 
-  try {
-    await testConnection(mailbox.email, plainPass, mailbox.imap_host, Number(mailbox.imap_port) || 993);
-  } catch (e) {
-    const msg = e.message;
-    let arabicError;
-    if (msg === 'AUTH_FAIL:GMAIL') {
-      arabicError = 'فشل الاتصال — كلمة المرور المحفوظة لم تعد تعمل. استخدم "تحديث كلمة المرور" وأدخل App Password جديدة.';
-    } else if (msg === 'AUTH_FAIL:OUTLOOK' || msg === 'AUTH_FAIL:YAHOO' || msg === 'AUTH_FAIL:GENERIC') {
-      arabicError = 'فشل الاتصال — كلمة المرور المحفوظة لم تعد صحيحة. استخدم "تحديث كلمة المرور".';
-    } else if (msg === 'CONN_FAIL') {
-      arabicError = 'تعذّر الاتصال بالسيرفر — تأكد من صحة عنوان IMAP والـ Port.';
-    } else {
-      arabicError = 'تعذّر الاتصال — تحقق من بيانات IMAP.';
-      console.error('[IMAP reconnect] unexpected error:', msg);
-    }
-    db.prepare("UPDATE mailboxes SET status = 'error', last_error = ? WHERE id = ?")
-      .run(arabicError.slice(0, 200), mailbox.id);
-    return res.status(400).json({ error: arabicError });
+  const code = extractCode(subject, body);
+
+  if (!code) {
+    console.log(`[Webhook] لا كود في إيميل لصندوق ${mailbox.email}`);
+    return res.json({ ok: true, extracted: false });
   }
 
-  db.prepare("UPDATE mailboxes SET status = 'connected', last_error = NULL WHERE id = ?")
-    .run(mailbox.id);
-  await disconnectMailbox(mailbox.id);
-  res.json({ ok: true });
+  // إيجاد السلوتس المرتبطة بهذا الصندوق
+  const slots = db.prepare('SELECT * FROM slots WHERE mailbox_id = ?').all(mailbox.id);
+  const receivedTs = Math.floor(Date.now() / 1000);
+
+  for (const slot of slots) {
+    // تجنب التكرار
+    const exists = db.prepare(
+      'SELECT id FROM codes WHERE slot_id = ? AND code = ? AND received_at > ?'
+    ).get(slot.id, code, receivedTs - 60);
+    if (exists) continue;
+
+    db.prepare(`
+      INSERT INTO codes (id, slot_id, code, email_from, email_subj, received_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      randomUUID(), slot.id, code,
+      String(req.body?.from || req.body?.sender || '').toLowerCase().slice(0, 200),
+      subject.slice(0, 200),
+      receivedTs,
+      receivedTs + 10 * 60 // ينتهي بعد 10 دقائق
+    );
+
+    console.log(`[Webhook] 🔑 كود جديد ${code} → slot ${slot.id}`);
+  }
+
+  // تحديث last_sync
+  db.prepare("UPDATE mailboxes SET last_sync = ?, status = 'active', last_error = NULL WHERE id = ?")
+    .run(receivedTs, mailbox.id);
+
+  res.json({ ok: true, extracted: true, code });
 });
 
 // ─── Slots ────────────────────────────────────────────────────────────────────
