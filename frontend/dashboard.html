@@ -622,10 +622,9 @@ function closeSlotModal() { document.getElementById('slot-modal').classList.remo
 function autoFillSlotEmail() {
   const sel = document.getElementById('slot-mailbox');
   const emailInput = document.getElementById('slot-email');
-  const selected = sel.options[sel.selectedIndex];
-  if (selected && selected.dataset.email) {
-    emailInput.value = selected.dataset.email;
-  }
+  const selectedId = sel.value;
+  const box = mailboxesCache.find(b => b.id === selectedId);
+  if (box) emailInput.value = box.email;
 }
 
 async function loadMailboxesForSelect() {
