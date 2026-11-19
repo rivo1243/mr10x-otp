@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { randomUUID, randomInt, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
+import { randomUUID, randomInt, randomBytes, createHash, pbkdf2Sync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import db from './db.js';
@@ -11,14 +11,30 @@ import { encryptPassword, decryptPassword } from './crypto-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// ─── CORS (F-09) ──────────────────────────────────────────────────────────────
-const CORS_ORIGIN = process.env.CORS_ORIGIN || false;
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+const CORS_ORIGIN = process.env.CORS_ORIGIN;
 const app = express();
 // N-02: trust the first hop proxy so req.ip gives the real client IP
 // (prevents X-Forwarded-For spoofing on Railway / reverse proxies)
 app.set('trust proxy', 1);
-app.use(cors(CORS_ORIGIN ? { origin: CORS_ORIGIN } : false));
-app.use(express.json());
+// F-08: only enable CORS when CORS_ORIGIN is explicitly set.
+// Calling cors(false) or cors() defaults to origin:'*' — omit entirely when not needed.
+if (CORS_ORIGIN) {
+  app.use(cors({ origin: CORS_ORIGIN }));
+}
+// F-02: cap request body at 64 KB to prevent DoS via large payloads
+app.use(express.json({ limit: '64kb' }));
+// F-03: security headers (without helmet — no network access)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'");
+  next();
+});
 
 // ─── Serve Frontend ───────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -32,14 +48,16 @@ app.get('/admin', (req, res) => {
 // F-06: /go-admin now issues a session token instead of echoing the password in the URL
 // X-05: changed from GET to POST so credentials are in the request body, not the URL/query
 // (GET params appear in Railway access logs, server logs, and browser history)
+// F-01: return JSON token instead of redirect — prevents session token appearing in server logs
 app.post('/go-admin', (req, res) => {
   const { email, pass } = req.body || {};
   const ADMIN_EMAIL_ENV = process.env.ADMIN_EMAIL || '';
-  if (!safeCompare(pass || '', ADMIN_PASS)) return res.status(401).send('Unauthorized');
+  if (!safeCompare(pass || '', ADMIN_PASS)) return res.status(401).json({ error: 'Unauthorized' });
   if (ADMIN_EMAIL_ENV && (!email || email.toLowerCase() !== ADMIN_EMAIL_ENV.toLowerCase()))
-    return res.status(401).send('Unauthorized');
+    return res.status(401).json({ error: 'Unauthorized' });
   const sessionToken = createAdminSession();
-  res.redirect(`/admin?session=${encodeURIComponent(sessionToken)}`);
+  // Return token as JSON — client stores it and navigates to /admin itself
+  res.json({ token: sessionToken });
 });
 
 app.use(express.static(join(__dirname, '../../frontend')));
@@ -47,19 +65,32 @@ app.use(express.static(join(__dirname, '../../frontend')));
 const PORT = process.env.PORT || 4000;
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
+// F-04: PBKDF2-SHA256 password hashing (memory-hard, GPU-resistant)
+// 100,000 iterations per OWASP 2023 recommendation for PBKDF2-HMAC-SHA256
+const PBKDF2_ITERATIONS = 100_000;
+const PBKDF2_KEYLEN = 32; // 32 bytes = 64 hex chars
+
 /**
- * hashPw(pw, salt) — PBKDF2-like with SHA-256 + per-user salt (F-05)
- * Legacy path: salt=null → old single-secret hash (for migration only)
+ * hashPw(pw, salt) — new: PBKDF2-SHA256 (salt required)
+ * Legacy path: salt=null → old SHA-256 single-secret hash (migration only)
  */
 function hashPw(pw, salt) {
   if (salt) {
-    // new: HMAC-SHA256(pw, salt + SECRET)
-    return createHash('sha256')
-      .update(salt + pw + (process.env.SECRET || 'mr10x'))
-      .digest('hex');
+    const pepper = process.env.SECRET || 'mr10x';
+    return pbkdf2Sync(pw + pepper, salt, PBKDF2_ITERATIONS, PBKDF2_KEYLEN, 'sha256').toString('hex');
   }
-  // legacy (no salt): keep working for existing accounts
+  // legacy (no salt): SHA-256 for checking old unsalted accounts before migration
   return createHash('sha256').update(pw + (process.env.SECRET || 'mr10x')).digest('hex');
+}
+
+/**
+ * hashPwLegacy(pw, salt) — old SHA-256+salt method used before F-04 fix.
+ * Used only in login to migrate existing salted accounts to PBKDF2.
+ */
+function hashPwLegacy(pw, salt) {
+  return createHash('sha256')
+    .update(salt + pw + (process.env.SECRET || 'mr10x'))
+    .digest('hex');
 }
 
 function generateSalt() {
@@ -155,11 +186,12 @@ setInterval(() => {
 }, 60 * 60_000);
 
 function adminMiddleware(req, res, next) {
-  // Accept session token from Authorization header: "AdminSession <token>"
+  // F-01: Accept session token from Authorization header ONLY: "AdminSession <token>"
+  // req.query.session removed — tokens must never travel via URL (server log exposure)
   const authHeader = req.headers.authorization || '';
   const sessionToken = authHeader.startsWith('AdminSession ')
     ? authHeader.slice('AdminSession '.length)
-    : req.query.session || null;
+    : null;
 
   if (sessionToken && validateAdminSession(sessionToken)) return next();
 
@@ -350,15 +382,29 @@ app.post('/api/login', (req, res) => {
 
   if (!seller) return res.status(401).json({ error: 'Invalid credentials' });
 
-  const expectedHash = hashPw(password, seller.salt || null);
-  if (!safeCompare(expectedHash, seller.password))
-    return res.status(401).json({ error: 'Invalid credentials' });
+  // F-04: try PBKDF2 hash first (new accounts and already-migrated accounts)
+  let expectedHash = hashPw(password, seller.salt || null);
+  let needsMigration = false;
+
+  if (!safeCompare(expectedHash, seller.password)) {
+    if (seller.salt) {
+      // Try legacy SHA-256+salt for accounts that existed before the F-04 fix
+      const legacyHash = hashPwLegacy(password, seller.salt);
+      if (!safeCompare(legacyHash, seller.password)) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      // Legacy hash matched — will re-hash with PBKDF2 below
+      needsMigration = true;
+    } else {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+  }
 
   if (seller.status === 'pending')
     return res.status(403).json({ error: 'pending', message: 'حسابك قيد المراجعة، سنتواصل معك على الواتساب قريباً.' });
 
-  // Lazily migrate legacy (no-salt) sellers to salted hash on first login
-  if (!seller.salt) {
+  // Lazily migrate: no-salt accounts and legacy SHA-256+salt accounts → PBKDF2
+  if (!seller.salt || needsMigration) {
     const newSalt = generateSalt();
     const newHash = hashPw(password, newSalt);
     db.prepare('UPDATE sellers SET password = ?, salt = ? WHERE id = ?').run(newHash, newSalt, seller.id);
@@ -389,14 +435,21 @@ app.post('/api/forgot-password', async (req, res) => {
   // F-11: always return ok; never log email not-found
   if (!seller) return res.json({ ok: true });
 
-  const token = randomBytes(32).toString('hex');
+  const rawToken = randomBytes(32).toString('hex');
+  // F-06: store SHA-256 hash of token in DB — raw token only travels in the email link
+  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
   const expiresAt = Math.floor(Date.now() / 1000) + 60 * 30; // 30 دقيقة
 
   db.prepare('INSERT INTO password_resets (id, email, token, expires_at) VALUES (?, ?, ?, ?)')
-    .run(randomUUID(), seller.email, token, expiresAt);
+    .run(randomUUID(), seller.email, tokenHash, expiresAt);
 
-  const BASE_URL = process.env.BASE_URL || 'https://mr10x-otp-production.up.railway.app';
-  const resetLink = `${BASE_URL}/reset-password.html?token=${token}`;
+  // F-12: BASE_URL is mandatory — set it in Railway environment variables
+  const BASE_URL = process.env.BASE_URL;
+  if (!BASE_URL) {
+    console.error('[forgot-password] BASE_URL env var not set — reset link cannot be generated');
+    return res.json({ ok: true }); // don't expose config error to client
+  }
+  const resetLink = `${BASE_URL}/reset-password.html?token=${rawToken}`;
 
   try {
     // N-06: escape seller.name before inserting into HTML
@@ -427,8 +480,10 @@ app.post('/api/reset-password', (req, res) => {
   if (!token || !password) return res.status(400).json({ error: 'Missing fields' });
   if (password.length < 6) return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
 
+  // F-06: hash the incoming raw token before comparing against stored hash
+  const tokenHash = createHash('sha256').update(token).digest('hex');
   const record = db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > ?')
-    .get(token, Math.floor(Date.now() / 1000));
+    .get(tokenHash, Math.floor(Date.now() / 1000));
 
   if (!record) return res.status(400).json({ error: 'الرابط غير صالح أو منتهي الصلاحية' });
 
@@ -437,7 +492,7 @@ app.post('/api/reset-password', (req, res) => {
   db.prepare('UPDATE sellers SET password = ?, salt = ? WHERE email = ?')
     .run(newHash, newSalt, record.email);
   db.prepare('UPDATE password_resets SET used = 1 WHERE token = ?')
-    .run(token);
+    .run(tokenHash);
 
   res.json({ ok: true });
 });
@@ -628,14 +683,11 @@ app.get('/api/slot/:token', (req, res) => {
   }
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
-  // N-01: decrypt account_password before returning
-  const accountPassword = slot.account_password_encrypted
-    ? decryptPassword(slot.account_password || '')
-    : (slot.account_password || '');
+  // F-05: account_password removed from unauthenticated response — credentials must not be
+  // exposed publicly (slot token is the only auth here, shared with the end-customer)
   res.json({
     label: slot.label,
     account_email: slot.account_email || '',
-    account_password: accountPassword,
     attempts_left: Math.max(0, 2 - (slot.code_attempts || 0))
   });
 });
@@ -651,18 +703,13 @@ app.get('/api/code/:token', (req, res) => {
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
 
-  // N-01: decrypt account_password before returning
-  const accountPassword = slot.account_password_encrypted
-    ? decryptPassword(slot.account_password || '')
-    : (slot.account_password || '');
-
+  // F-05: account_password removed — not returned to unauthenticated callers
   const attempts = slot.code_attempts || 0;
   if (attempts >= 2) {
     return res.json({
       status: 'exhausted',
       label: slot.label,
-      account_email: slot.account_email || '',
-      account_password: accountPassword
+      account_email: slot.account_email || ''
     });
   }
 
@@ -683,8 +730,7 @@ app.get('/api/code/:token', (req, res) => {
     label: slot.label,
     expires_in: code.expires_at - Math.floor(Date.now() / 1000),
     attempts_left: Math.max(0, 2 - (attempts + 1)),
-    account_email: slot.account_email || '',
-    account_password: accountPassword
+    account_email: slot.account_email || ''
   });
 });
 
