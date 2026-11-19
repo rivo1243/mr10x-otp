@@ -633,6 +633,7 @@ async function loadMailboxesForSelect() {
   try {
     const r = await apiFetch('/api/mailboxes');
     const boxes = await r.json();
+    console.log('[mr10x] loadMailboxesForSelect boxes:', boxes);
     mailboxesCache = boxes;
     if (!boxes.length) {
       sel.innerHTML = '<option value="">لا يوجد صندوق بريد — أضف واحداً أولاً</option>';
@@ -640,10 +641,14 @@ async function loadMailboxesForSelect() {
       sel.innerHTML = boxes.map(b =>
         `<option value="${b.id}" data-email="${b.email}">${b.email}${b.label ? ' — ' + b.label : ''}</option>`
       ).join('');
+      console.log('[mr10x] first box email:', boxes[0].email, '| sel.value:', sel.value);
       // auto-fill email field directly from first box (avoids any sel.value timing issue)
-      document.getElementById('slot-email').value = boxes[0].email;
+      const emailInput = document.getElementById('slot-email');
+      emailInput.value = boxes[0].email;
+      console.log('[mr10x] slot-email set to:', emailInput.value);
     }
   } catch(e) {
+    console.error('[mr10x] loadMailboxesForSelect error:', e);
     sel.innerHTML = '<option value="">فشل التحميل</option>';
   }
 }
