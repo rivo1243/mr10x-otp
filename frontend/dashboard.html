@@ -608,12 +608,12 @@ function updateStats(slots) {
 let mailboxesCache = [];
 
 function openSlotModal() {
-  loadMailboxesForSelect();
   document.getElementById('slot-label').value = '';
   document.getElementById('slot-email').value = '';
   document.getElementById('slot-pass').value = '';
   document.getElementById('slot-count').value = '1';
   document.getElementById('slot-err').style.display = 'none';
+  loadMailboxesForSelect(); // async — runs after clearing, sets email when done
   document.getElementById('slot-modal').classList.add('open');
   setTimeout(() => document.getElementById('slot-label').focus(), 100);
 }
