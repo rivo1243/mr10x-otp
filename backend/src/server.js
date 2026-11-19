@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import db from './db.js';
 import { guessHost, testConnection } from './imap.js';
-import { pollAll } from './poller.js';
+import { pollAll, disconnectMailbox } from './poller.js';
 import { encryptPassword, decryptPassword } from './crypto-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -599,6 +599,49 @@ app.post('/api/mailboxes', authMiddleware, async (req, res) => {
 
 app.delete('/api/mailboxes/:id', authMiddleware, (req, res) => {
   db.prepare('DELETE FROM mailboxes WHERE id = ? AND seller_id = ?').run(req.params.id, req.seller.id);
+  res.json({ ok: true });
+});
+
+// تحديث كلمة مرور صندوق بريد موجود (بدون حذف أو إعادة ربط)
+app.patch('/api/mailboxes/:id/password', authMiddleware, async (req, res) => {
+  const { password } = req.body || {};
+  if (!password) return res.status(400).json({ error: 'كلمة المرور مطلوبة' });
+
+  const mailbox = db.prepare('SELECT * FROM mailboxes WHERE id = ? AND seller_id = ?')
+    .get(req.params.id, req.seller.id);
+  if (!mailbox) return res.status(404).json({ error: 'الصندوق غير موجود' });
+
+  try {
+    await testConnection(mailbox.email, password, mailbox.imap_host, Number(mailbox.imap_port) || 993);
+  } catch (e) {
+    const msg = e.message;
+    let arabicError;
+    if (msg === 'AUTH_FAIL:GMAIL') {
+      arabicError = 'فشل تسجيل الدخول — Gmail يطلب App Password (كلمة مرور التطبيقات) وليس كلمة مرورك العادية. اذهب إلى myaccount.google.com/apppasswords وأنشئ كلمة مرور جديدة واستخدمها هنا.';
+    } else if (msg === 'AUTH_FAIL:OUTLOOK') {
+      arabicError = 'فشل تسجيل الدخول — تأكد من تفعيل IMAP في إعدادات Outlook، وأنك تستخدم كلمة المرور الصحيحة.';
+    } else if (msg === 'AUTH_FAIL:YAHOO') {
+      arabicError = 'فشل تسجيل الدخول — Yahoo يطلب App Password. اذهب إلى إعدادات الحساب في Yahoo وأنشئ كلمة مرور للتطبيقات.';
+    } else if (msg === 'AUTH_FAIL:GENERIC') {
+      arabicError = 'كلمة المرور أو الإيميل غير صحيحة. تأكد من بيانات الدخول.';
+    } else if (msg === 'CONN_FAIL') {
+      arabicError = 'تعذّر الاتصال بالسيرفر — تأكد من صحة عنوان IMAP والـ Port.';
+    } else {
+      arabicError = 'تعذّر الاتصال بالسيرفر — تحقق من بيانات IMAP وحاول مرة أخرى.';
+      console.error('[IMAP updatePassword] unexpected error:', msg);
+    }
+    return res.status(400).json({ error: arabicError });
+  }
+
+  // تحديث كلمة المرور المشفرة في قاعدة البيانات
+  const encryptedPassword = encryptPassword(password);
+  db.prepare(`UPDATE mailboxes SET password = ?, password_encrypted = 1,
+    status = 'connected', last_error = NULL WHERE id = ?`)
+    .run(encryptedPassword, mailbox.id);
+
+  // قطع الاتصال الحالي لإجبار الـ poller على إعادة الاتصال بالكلمة الجديدة
+  await disconnectMailbox(mailbox.id);
+
   res.json({ ok: true });
 });
 

@@ -631,6 +631,31 @@
   </div>
 </div>
 
+<!-- ── Update Password Modal ── -->
+<div class="modal-overlay" id="update-pass-modal">
+  <div class="modal">
+    <h3>تحديث كلمة المرور</h3>
+    <p id="upd-email-label" style="font-size:13px;color:var(--muted);margin-bottom:16px;direction:ltr;text-align:left"></p>
+    <div class="form-group">
+      <label>كلمة المرور الجديدة / App Password</label>
+      <input type="password" id="upd-pass" placeholder="••••••••" dir="ltr"
+        onkeyup="if(event.key==='Enter')saveUpdatePass()">
+      <div id="upd-gmail-hint" class="gmail-hint" style="display:none">
+        ⚠️ Gmail لا يقبل كلمة المرور العادية — تحتاج <b>App Password</b>:
+        <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">أنشئها هنا</a>
+        (فعّل التحقق بخطوتين أولاً)
+      </div>
+    </div>
+    <div id="upd-err" class="error-msg" style="display:none"></div>
+    <div id="upd-ok" class="success-msg" style="display:none">تم تحديث كلمة المرور ✓</div>
+    <input type="hidden" id="upd-mailbox-id">
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('update-pass-modal')">إلغاء</button>
+      <button class="btn btn-primary" id="upd-save-btn" onclick="saveUpdatePass()">حفظ</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast ── -->
 <div id="toast"></div>
 
@@ -1011,6 +1036,7 @@ async function loadMailboxes() {
         ${mb.status === 'connected' ? 'متصل' : 'خطأ'}
       </span>
       ${mb.last_error ? `<span style="font-size:11px;color:var(--red);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(mb.last_error)}">${escapeHtml(mb.last_error.slice(0,40))}</span>` : ''}
+      <button class="btn btn-sm" style="background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.25)" onclick="openUpdatePass('${mb.id}','${escapeHtml(mb.email)}')">🔑 تحديث كلمة المرور</button>
       <button class="btn btn-danger btn-sm" onclick="deleteMailbox('${mb.id}')">حذف</button>
     </div>`).join('');
 }
@@ -1131,6 +1157,55 @@ async function deleteMailbox(id) {
   if (!confirm('حذف هذا الصندوق؟ سيتم حذف كل روابطه أيضاً')) return;
   await apiFetch('/api/mailboxes/' + id, { method: 'DELETE' });
   loadAll();
+}
+
+function openUpdatePass(id, email) {
+  document.getElementById('upd-mailbox-id').value = id;
+  document.getElementById('upd-email-label').textContent = email;
+  document.getElementById('upd-pass').value = '';
+  document.getElementById('upd-err').style.display = 'none';
+  document.getElementById('upd-ok').style.display = 'none';
+  document.getElementById('upd-save-btn').disabled = false;
+  // إظهار تلميح Gmail إذا كان صندوق Gmail
+  const isGmail = email.includes('@gmail.') || email.includes('@googlemail.');
+  document.getElementById('upd-gmail-hint').style.display = isGmail ? 'block' : 'none';
+  openModal('update-pass-modal');
+  setTimeout(() => document.getElementById('upd-pass').focus(), 100);
+}
+
+async function saveUpdatePass() {
+  const id = document.getElementById('upd-mailbox-id').value;
+  const password = document.getElementById('upd-pass').value;
+  const errEl = document.getElementById('upd-err');
+  const okEl = document.getElementById('upd-ok');
+  const btn = document.getElementById('upd-save-btn');
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+
+  if (!password) { errEl.textContent = 'أدخل كلمة المرور الجديدة'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'جارٍ التحقق...';
+  try {
+    const r = await apiFetch('/api/mailboxes/' + id + '/password', {
+      method: 'PATCH',
+      body: JSON.stringify({ password })
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      errEl.textContent = data.error || 'فشل التحديث';
+      errEl.style.display = 'block';
+      return;
+    }
+    okEl.style.display = 'block';
+    setTimeout(() => { closeModal('update-pass-modal'); loadMailboxes(); }, 1500);
+  } catch(e) {
+    errEl.textContent = 'تعذر الاتصال بالسيرفر';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'حفظ';
+  }
 }
 
 function autoFillSlotEmail() {

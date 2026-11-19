@@ -257,3 +257,13 @@ export async function pollAll() {
     setInterval(syncMailboxList, 30_000); // تحقق من صناديق جديدة كل 30 ث
   }
 }
+
+// ── قطع اتصال صندوق معين لإعادة الربط بكلمة مرور جديدة ───────────────────
+export async function disconnectMailbox(id) {
+  const entry = liveConns.get(id);
+  if (entry) {
+    try { await entry.client.logout().catch(() => {}); } catch {}
+    liveConns.delete(id);
+  }
+  retryCount.delete(id); // صفّر عداد المحاولات حتى يتصل فوراً
+}
