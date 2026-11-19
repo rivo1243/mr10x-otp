@@ -111,4 +111,7 @@ try { db.exec(`ALTER TABLE sellers ADD COLUMN salt TEXT DEFAULT NULL`); } catch 
 // F-04: flag whether mailbox password is encrypted
 try { db.exec(`ALTER TABLE mailboxes ADD COLUMN password_encrypted INTEGER DEFAULT 0`); } catch {}
 
+// N-01: flag whether slot account_password is encrypted
+try { db.exec(`ALTER TABLE slots ADD COLUMN account_password_encrypted INTEGER DEFAULT 0`); } catch {}
+
 export default db;

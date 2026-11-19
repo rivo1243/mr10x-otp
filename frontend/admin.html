@@ -865,7 +865,7 @@ function renderTable(tab, sellers) {
       <td data-label="الاسم"><strong>${escapeHtml(s.name)}</strong></td>
       <td data-label="البريد الإلكتروني" dir="ltr" style="font-size:13px">${escapeHtml(s.email)}</td>
       <td data-label="واتساب">${wa}</td>
-      <td data-label="الحالة"><span class="status-badge ${s.status}">${statusLabel}</span></td>
+      <td data-label="الحالة"><span class="status-badge ${['pending','active','rejected'].includes(s.status) ? s.status : 'unknown'}">${statusLabel}</span></td>
       <td data-label="تاريخ التسجيل" class="date-cell">${formatDate(s.created_at)}</td>
       <td data-label="الاشتراك">${subCell}</td>
       <td data-label="الباقة">${planCell}</td>

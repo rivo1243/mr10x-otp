@@ -7,13 +7,16 @@ import { join, dirname } from 'node:path';
 import db from './db.js';
 import { guessHost, testConnection } from './imap.js';
 import { pollAll } from './poller.js';
-import { encryptPassword } from './crypto-utils.js';
+import { encryptPassword, decryptPassword } from './crypto-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ─── CORS (F-09) ──────────────────────────────────────────────────────────────
 const CORS_ORIGIN = process.env.CORS_ORIGIN || false;
 const app = express();
+// N-02: trust the first hop proxy so req.ip gives the real client IP
+// (prevents X-Forwarded-For spoofing on Railway / reverse proxies)
+app.set('trust proxy', 1);
 app.use(cors(CORS_ORIGIN ? { origin: CORS_ORIGIN } : false));
 app.use(express.json());
 
@@ -158,21 +161,33 @@ function adminMiddleware(req, res, next) {
 
   if (sessionToken && validateAdminSession(sessionToken)) return next();
 
-  // Legacy: also accept x-admin-pass for backwards compat (deprecated, will be removed)
-  const pass = req.headers['x-admin-pass'];
-  if (pass && safeCompare(pass, ADMIN_PASS)) return next();
-
+  // N-03: x-admin-pass legacy header removed — session tokens only
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
 // POST /api/admin/login — exchange password for session token
 app.post('/api/admin/login', (req, res) => {
+  // N-04: rate limit — 5 attempts per 15 minutes per IP to prevent brute-force
+  const ip = req.ip;
+  if (!rateLimit(`admin-login:${ip}`, 5, 15 * 60_000)) {
+    return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
+  }
   const { password } = req.body || {};
   if (!safeCompare(password || '', ADMIN_PASS))
     return res.status(401).json({ error: 'Invalid password' });
   const token = createAdminSession();
   res.json({ token, expiresIn: 8 * 3600 });
 });
+
+// ─── HTML escaping (N-06) ─────────────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ─── Mailer (Mailjet API) ─────────────────────────────────────────────────────
 const MAILJET_API_KEY    = process.env.MAILJET_API_KEY;
@@ -219,15 +234,18 @@ async function sendEmail({ to, subject, html }) {
 }
 
 async function sendVerificationEmail(toEmail, toName, code) {
+  // N-06: escape user-supplied values before inserting into HTML
+  const safeName = escapeHtml(toName);
+  const safeCode = escapeHtml(code);
   await sendEmail({
     to: toEmail,
     subject: 'كود تأكيد التسجيل في Mr10x',
     html: `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto;">
-        <h2 style="color: #7c3aed;">مرحباً ${toName} 👋</h2>
+        <h2 style="color: #7c3aed;">مرحباً ${safeName} 👋</h2>
         <p>شكراً لتسجيلك في <strong>Mr10x</strong>. أدخل الكود التالي لتأكيد بريدك الإلكتروني:</p>
         <div style="background: #1a1a2e; border: 2px solid #7c3aed; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
-          <span style="font-size: 36px; font-weight: bold; color: #a855f7; letter-spacing: 8px;">${code}</span>
+          <span style="font-size: 36px; font-weight: bold; color: #a855f7; letter-spacing: 8px;">${safeCode}</span>
         </div>
         <p style="color: #888;">ينتهي الكود خلال 15 دقيقة.</p>
         <p style="color: #888; font-size: 12px;">إذا لم تطلب هذا الكود تجاهل هذه الرسالة.</p>
@@ -241,6 +259,8 @@ async function sendVerificationEmail(toEmail, toName, code) {
 app.post('/api/register', async (req, res) => {
   const { name, email, password, phone, plan_type } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
+  // N-07: enforce minimum password length consistently (matches /api/reset-password)
+  if (password.length < 6) return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
   const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(email.toLowerCase());
   if (existing) return res.status(409).json({ error: 'Email already registered' });
 
@@ -345,7 +365,8 @@ app.post('/api/forgot-password', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email required' });
 
   // F-13: rate limit by IP — 5 requests per 10 minutes
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  // N-02: use req.ip (trust proxy=1 set above) instead of parsing X-Forwarded-For manually
+  const ip = req.ip;
   if (!rateLimit(`fp:${ip}`, 5, 10 * 60_000)) {
     return res.status(429).json({ error: 'Too many requests. Please wait before trying again.' });
   }
@@ -364,13 +385,15 @@ app.post('/api/forgot-password', async (req, res) => {
   const resetLink = `${BASE_URL}/reset-password.html?token=${token}`;
 
   try {
+    // N-06: escape seller.name before inserting into HTML
+    const safeSellerName = escapeHtml(seller.name);
     await sendEmail({
       to: seller.email,
       subject: 'إعادة تعيين كلمة المرور — Mr10x',
       html: `
         <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; background:#0f0f1a; color:#e2e8f0; padding:32px; border-radius:12px;">
           <h2 style="color:#a855f7; margin-bottom:8px;">Mr10x</h2>
-          <p>مرحباً ${seller.name}،</p>
+          <p>مرحباً ${safeSellerName}،</p>
           <p>طلبت إعادة تعيين كلمة مرورك. اضغط الزر أدناه:</p>
           <a href="${resetLink}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">إعادة تعيين كلمة المرور</a>
           <p style="color:#94a3b8;font-size:13px;">الرابط صالح لمدة 30 دقيقة فقط. إذا لم تطلب هذا، تجاهل الرسالة.</p>
@@ -536,12 +559,15 @@ app.post('/api/slots', authMiddleware, (req, res) => {
   }
 
   const created = [];
-  const n = Math.min(Number(count) || 1, 100);
+  // N-08: lower max bulk slots from 100 → 10 to limit DoS potential
+  const n = Math.min(Number(count) || 1, 10);
+  // N-01: encrypt account_password before storing
+  const encryptedAccountPassword = account_password ? encryptPassword(account_password) : '';
   for (let i = 0; i < n; i++) {
     const id = randomUUID();
     const token = randomBytes(16).toString('hex'); // F-02: cryptographically secure slot token
-    db.prepare('INSERT INTO slots (id, seller_id, mailbox_id, label, token, account_email, account_password) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(id, req.seller.id, mailbox_id, label, token, account_email, account_password);
+    db.prepare('INSERT INTO slots (id, seller_id, mailbox_id, label, token, account_email, account_password, account_password_encrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, req.seller.id, mailbox_id, label, token, account_email, encryptedAccountPassword, encryptedAccountPassword ? 1 : 0);
     created.push({ id, token, label, account_email });
   }
   res.json(created);
@@ -553,8 +579,12 @@ app.patch('/api/slots/:id', authMiddleware, (req, res) => {
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   if (account_email !== undefined)
     db.prepare('UPDATE slots SET account_email = ? WHERE id = ?').run(account_email, req.params.id);
-  if (account_password !== undefined)
-    db.prepare('UPDATE slots SET account_password = ? WHERE id = ?').run(account_password, req.params.id);
+  if (account_password !== undefined) {
+    // N-01: encrypt before storing
+    const enc = account_password ? encryptPassword(account_password) : '';
+    db.prepare('UPDATE slots SET account_password = ?, account_password_encrypted = ? WHERE id = ?')
+      .run(enc, enc ? 1 : 0, req.params.id);
+  }
   if (label !== undefined)
     db.prepare('UPDATE slots SET label = ? WHERE id = ?').run(label, req.params.id);
   res.json({ ok: true });
@@ -575,24 +605,40 @@ app.delete('/api/slots/:id', authMiddleware, (req, res) => {
 // ─── Customer endpoint (public) ───────────────────────────────────────────────
 // GET /api/slot/:token — F-08: rate limited (10 req/min per IP)
 app.get('/api/slot/:token', (req, res) => {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  // N-02: use req.ip (trust proxy=1 set above)
+  const ip = req.ip;
   if (!rateLimit(`slot:${ip}`, 10, 60_000)) {
     return res.status(429).json({ error: 'Too many requests.' });
   }
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
+  // N-01: decrypt account_password before returning
+  const accountPassword = slot.account_password_encrypted
+    ? decryptPassword(slot.account_password || '')
+    : (slot.account_password || '');
   res.json({
     label: slot.label,
     account_email: slot.account_email || '',
-    account_password: slot.account_password || '',
+    account_password: accountPassword,
     attempts_left: Math.max(0, 2 - (slot.code_attempts || 0))
   });
 });
 
 // GET /api/code/:token — جلب آخر كود
 app.get('/api/code/:token', (req, res) => {
+  // N-05: rate limit — 20 req/min per IP (prevent enumeration/scraping)
+  const ip = req.ip;
+  if (!rateLimit(`code:${ip}`, 20, 60_000)) {
+    return res.status(429).json({ error: 'Too many requests.' });
+  }
+
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
+
+  // N-01: decrypt account_password before returning
+  const accountPassword = slot.account_password_encrypted
+    ? decryptPassword(slot.account_password || '')
+    : (slot.account_password || '');
 
   const attempts = slot.code_attempts || 0;
   if (attempts >= 2) {
@@ -600,7 +646,7 @@ app.get('/api/code/:token', (req, res) => {
       status: 'exhausted',
       label: slot.label,
       account_email: slot.account_email || '',
-      account_password: slot.account_password || ''
+      account_password: accountPassword
     });
   }
 
@@ -620,7 +666,9 @@ app.get('/api/code/:token', (req, res) => {
     code: code.code,
     label: slot.label,
     expires_in: code.expires_at - Math.floor(Date.now() / 1000),
-    attempts_left: Math.max(0, 2 - (attempts + 1))
+    attempts_left: Math.max(0, 2 - (attempts + 1)),
+    account_email: slot.account_email || '',
+    account_password: accountPassword
   });
 });
 
