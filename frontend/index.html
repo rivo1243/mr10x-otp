@@ -584,7 +584,7 @@
     <h3>إنشاء رابط زبون</h3>
     <div class="form-group">
       <label>الصندوق المرتبط</label>
-      <select id="slot-mailbox"></select>
+      <select id="slot-mailbox" onchange="autoFillSlotEmail()"></select>
     </div>
     <div class="form-group">
       <label>اسم الزبون / الخدمة</label>
@@ -1007,8 +1007,8 @@ async function loadMailboxes() {
         <div class="title">${escapeHtml(mb.email)}</div>
         <div class="meta">${escapeHtml(mb.imap_host)} ${mb.label ? '· ' + escapeHtml(mb.label) : ''}</div>
       </div>
-      <span class="badge ${mb.status === 'connected' ? 'badge-green' : mb.status === 'error' ? 'badge-red' : 'badge-yellow'}">
-        ${mb.status === 'connected' ? 'متصل' : mb.status === 'error' ? 'خطأ' : mb.status}
+      <span class="badge ${mb.status === 'connected' ? 'badge-green' : 'badge-red'}">
+        ${mb.status === 'connected' ? 'متصل' : 'خطأ'}
       </span>
       ${mb.last_error ? `<span style="font-size:11px;color:var(--red);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(mb.last_error)}">${escapeHtml(mb.last_error.slice(0,40))}</span>` : ''}
       <button class="btn btn-danger btn-sm" onclick="deleteMailbox('${mb.id}')">حذف</button>
@@ -1133,15 +1133,24 @@ async function deleteMailbox(id) {
   loadAll();
 }
 
+function autoFillSlotEmail() {
+  const sel = document.getElementById('slot-mailbox');
+  const emailInput = document.getElementById('slot-account-email');
+  if (!sel || !emailInput) return;
+  const chosen = mailboxCache.find(m => m.id === sel.value);
+  if (chosen) emailInput.value = String(chosen.email || '');
+}
+
 function openAddSlot() {
   if (!mailboxCache.length) { toast('أضف صندوق إيميل أولاً'); return; }
   const sel = document.getElementById('slot-mailbox');
   sel.innerHTML = mailboxCache.map(m => `<option value="${m.id}">${escapeHtml(m.email)}</option>`).join('');
   document.getElementById('slot-label').value = '';
-  document.getElementById('slot-account-email').value = '';
   document.getElementById('slot-account-pass').value = '';
   document.getElementById('slot-count').value = '1';
   document.getElementById('slot-err').style.display = 'none';
+  // auto-fill email from first mailbox
+  autoFillSlotEmail();
   openModal('add-slot-modal');
 }
 
