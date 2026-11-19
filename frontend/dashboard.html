@@ -622,8 +622,8 @@ function closeSlotModal() { document.getElementById('slot-modal').classList.remo
 function autoFillSlotEmail() {
   const sel = document.getElementById('slot-mailbox');
   const emailInput = document.getElementById('slot-email');
-  const selectedId = sel.value;
-  const box = mailboxesCache.find(b => b.id === selectedId);
+  const selectedId = String(sel.value);
+  const box = mailboxesCache.find(b => String(b.id) === selectedId);
   if (box) emailInput.value = box.email;
 }
 
@@ -640,8 +640,8 @@ async function loadMailboxesForSelect() {
       sel.innerHTML = boxes.map(b =>
         `<option value="${b.id}" data-email="${b.email}">${b.email}${b.label ? ' — ' + b.label : ''}</option>`
       ).join('');
-      // auto-fill email field with first mailbox email
-      autoFillSlotEmail();
+      // auto-fill email field directly from first box (avoids any sel.value timing issue)
+      document.getElementById('slot-email').value = boxes[0].email;
     }
   } catch(e) {
     sel.innerHTML = '<option value="">فشل التحميل</option>';
