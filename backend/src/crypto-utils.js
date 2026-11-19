@@ -1,18 +1,22 @@
 /**
- * crypto-utils.js — AES-256-CBC encrypt/decrypt for IMAP passwords (F-04)
- * Key: IMAP_ENCRYPT_KEY env var (64 hex chars = 32 bytes)
- *      fallback: SHA-256 of SECRET to get 32 bytes
+ * crypto-utils.js — AES-256-CBC encrypt/decrypt for IMAP passwords
+ * Key: IMAP_ENCRYPT_KEY env var (required, 64 hex chars = 32 bytes)
+ *
+ * F-07: hardcoded fallback key removed. IMAP_ENCRYPT_KEY must be set in Railway
+ * environment variables. Generate a key with:
+ *   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
  */
-import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 function getKey() {
   const hexKey = process.env.IMAP_ENCRYPT_KEY;
-  if (hexKey && hexKey.length === 64) {
-    return Buffer.from(hexKey, 'hex');
+  if (!hexKey || hexKey.length !== 64) {
+    // F-07: fail fast — no silent fallback to a predictable key
+    console.error('[FATAL] IMAP_ENCRYPT_KEY env var is missing or invalid (must be 64 hex chars = 32 bytes)');
+    console.error('[FATAL] Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    process.exit(1);
   }
-  // Derive 32-byte key from SECRET
-  const secret = process.env.SECRET || 'mr10x-default-secret';
-  return createHash('sha256').update(secret).digest();
+  return Buffer.from(hexKey, 'hex');
 }
 
 /**

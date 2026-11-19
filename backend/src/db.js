@@ -114,4 +114,12 @@ try { db.exec(`ALTER TABLE mailboxes ADD COLUMN password_encrypted INTEGER DEFAU
 // N-01: flag whether slot account_password is encrypted
 try { db.exec(`ALTER TABLE slots ADD COLUMN account_password_encrypted INTEGER DEFAULT 0`); } catch {}
 
+// F-09: indexes for high-frequency lookups
+try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_slots_token ON slots(token)`); } catch {}
+try { db.exec(`CREATE INDEX IF NOT EXISTS idx_codes_slot_id ON codes(slot_id)`); } catch {}
+
+// F-11: clean up stale verification and reset records (older than 24h past expiry)
+db.prepare('DELETE FROM email_verifications WHERE expires_at < unixepoch() - 86400').run();
+db.prepare('DELETE FROM password_resets WHERE expires_at < unixepoch() - 86400').run();
+
 export default db;

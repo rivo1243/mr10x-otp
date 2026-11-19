@@ -646,7 +646,9 @@
 <div id="toast"></div>
 
 <script>
-const API = window.MR10X_API || 'https://mr10x-otp-production.up.railway.app';
+// F-12: no hardcoded fallback URL — API base must be injected via window.MR10X_API
+if (!window.MR10X_API) console.error('[mr10x] window.MR10X_API is not set — API calls will fail');
+const API = window.MR10X_API || '';
 let ADMIN_TOKEN = '';  // F-06/F-14: store session token, not password
 let allSellers = [];
 let deletePendingId = null;
@@ -983,30 +985,9 @@ async function confirmDelete() {
   } catch(e) { toast('حدث خطأ'); }
 }
 
-// ── تحقق تلقائي من الجلسة — F-06/F-14: use session token not password ──
+// ── تحقق تلقائي من الجلسة ──
 (function init() {
-  // F-06: session token arrives from /go-admin redirect as ?session=<token>
-  const urlSession = new URLSearchParams(location.search).get('session');
-  if (urlSession) {
-    // Clear token from URL immediately (never expose in browser history)
-    history.replaceState(null, '', location.pathname);
-    ADMIN_TOKEN = urlSession;
-    sessionStorage.setItem('mr10x_admin_token', urlSession);
-    // Load sellers directly — token already validated by /go-admin
-    fetch(`${API}/api/admin/sellers`, {
-      headers: { 'Authorization': `AdminSession ${ADMIN_TOKEN}` }
-    }).then(r => {
-      if (!r.ok) { ADMIN_TOKEN = ''; sessionStorage.removeItem('mr10x_admin_token'); return; }
-      return r.json();
-    }).then(data => {
-      if (!data) return;
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      processData(data);
-      loadStats();
-    }).catch(() => { ADMIN_TOKEN = ''; sessionStorage.removeItem('mr10x_admin_token'); });
-    return;
-  }
+  // F-01: URL ?session= pickup removed — /go-admin now returns JSON token, no redirect
   // F-14: restore session token (not password) from sessionStorage
   const savedToken = sessionStorage.getItem('mr10x_admin_token');
   if (savedToken) {
