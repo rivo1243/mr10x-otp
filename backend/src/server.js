@@ -508,7 +508,15 @@ app.post('/api/reset-password', (req, res) => {
 // GET /api/me — بيانات الحساب الحالي
 app.get('/api/me', authMiddleware, (req, res) => {
   const seller = db.prepare('SELECT id, name, email, phone, status, subscription_expires_at, plan_type FROM sellers WHERE id = ?').get(req.seller.id);
-  res.json(seller);
+  // احسب الأيام المتبقية من subscription_expires_at وأضفها للاستجابة
+  const now = Math.floor(Date.now() / 1000);
+  let subscription_days_left = 0;
+  if (seller.subscription_expires_at && seller.subscription_expires_at > now) {
+    subscription_days_left = Math.ceil((seller.subscription_expires_at - now) / 86400);
+  }
+  // استخرج اسم الخطة من plan_type
+  const planNames = { plan1: 'أساسية', plan2: 'احترافية', plan3: 'متقدمة' };
+  res.json({ ...seller, subscription_days_left, plan: seller.plan_type });
 });
 
 // ─── Admin API ────────────────────────────────────────────────────────────────
