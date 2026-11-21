@@ -4,23 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mr10x — كود التحقق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0f;
-    --card: #13131c;
-    --card2: #1a1a26;
-    --border: #252535;
-    --accent: #7c3aed;
-    --accent2: #a855f7;
-    --green: #10b981;
-    --red: #ef4444;
+    --bg: #0e0e12;
+    --surface: #17171d;
+    --surface2: #1f1f28;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(245,159,11,0.3);
+    --accent: #f59f0b;
+    --accent2: #fbbf24;
+    --text: #f4f3ef;
+    --muted: #8a8898;
+    --muted2: #a9a8b8;
+    --success: #22c55e;
+    --danger: #ef4444;
     --yellow: #f59e0b;
-    --text: #e2e8f0;
-    --muted: #64748b;
+    --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Tajawal', system-ui, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -40,7 +46,7 @@
     transform: translateX(-50%);
     width: 700px;
     height: 500px;
-    background: radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(245,159,11,0.07) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
@@ -51,18 +57,29 @@
     text-align: center;
   }
 
-  .logo {
-    font-size: 22px; font-weight: 900;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  /* ── Logo mark ── */
+  .navbar-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
     margin-bottom: 28px;
-    display: inline-block;
+  }
+  .logo-mark {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--accent); color: #000;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 900; flex-shrink: 0;
+    letter-spacing: -0.5px;
+  }
+  .logo-word {
+    font-size: 20px; font-weight: 800; color: var(--text);
     letter-spacing: -0.5px;
   }
 
   /* ── Card ── */
   .card {
-    background: var(--card);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 24px;
     padding: 32px 28px;
@@ -73,29 +90,28 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(124,58,237,0.12);
-    border: 1px solid rgba(124,58,237,0.3);
+    background: rgba(245,159,11,0.1);
+    border: 1px solid rgba(245,159,11,0.25);
     border-radius: 20px;
     padding: 5px 14px;
     font-size: 12px;
     color: var(--accent2);
     margin-bottom: 24px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.3px;
   }
   .service-badge::before {
     content: '';
     width: 6px; height: 6px;
     border-radius: 50%;
-    background: var(--accent2);
+    background: var(--accent);
     animation: blink 2s ease-in-out infinite;
   }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
   /* ── Credentials box ── */
   .creds-box {
-    background: var(--card2);
+    background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 20px;
@@ -108,7 +124,7 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 14px;
-    font-weight: 600;
+    font-weight: 700;
   }
   .cred-row {
     display: flex;
@@ -124,7 +140,7 @@
     font-size: 11px;
     color: var(--muted);
     min-width: 70px;
-    font-weight: 500;
+    font-weight: 600;
   }
   .cred-value {
     font-size: 14px;
@@ -140,8 +156,8 @@
   }
   .cred-value.password { letter-spacing: 2px; }
   .btn-copy-cred {
-    background: rgba(124,58,237,0.15);
-    border: 1px solid rgba(124,58,237,0.3);
+    background: rgba(245,159,11,0.1);
+    border: 1px solid rgba(245,159,11,0.25);
     color: var(--accent2);
     border-radius: 8px;
     padding: 5px 10px;
@@ -150,9 +166,10 @@
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+    font-family: 'Tajawal', sans-serif;
   }
-  .btn-copy-cred:hover { background: rgba(124,58,237,0.25); }
-  .btn-copy-cred.done { background: rgba(16,185,129,0.15); border-color: var(--green); color: var(--green); }
+  .btn-copy-cred:hover { background: rgba(245,159,11,0.2); border-color: rgba(245,159,11,0.4); }
+  .btn-copy-cred.done { background: rgba(34,197,94,0.12); border-color: var(--success); color: var(--success); }
 
   .show-pass-btn {
     background: none;
@@ -170,17 +187,16 @@
     display: flex; align-items: center; justify-content: center; gap: 10px;
     width: 100%;
     padding: 16px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff; border: none; border-radius: 14px;
-    font-size: 16px; font-weight: 800; cursor: pointer;
+    background: var(--accent);
+    color: #000; border: none; border-radius: var(--radius);
+    font-size: 16px; font-weight: 900; cursor: pointer;
     transition: all 0.25s;
-    position: relative;
-    overflow: hidden;
+    font-family: 'Tajawal', sans-serif;
   }
-  .btn-get:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,58,237,0.4); }
+  .btn-get:hover:not(:disabled) { transform: translateY(-2px); background: var(--accent2); box-shadow: 0 8px 30px rgba(245,159,11,0.35); }
   .btn-get:active:not(:disabled) { transform: translateY(0); }
   .btn-get:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .btn-get.cooldown { background: linear-gradient(135deg, #374151, #4b5563); }
+  .btn-get.cooldown { background: var(--surface2); color: var(--muted); }
 
   /* ── Countdown ── */
   .cooldown-bar-wrap {
@@ -245,8 +261,7 @@
   .overlay-num {
     font-size: 48px;
     font-weight: 900;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    color: var(--accent);
     position: relative; z-index: 1;
   }
   .overlay-text {
@@ -264,8 +279,8 @@
   #code-panel.show { display: block; }
 
   .code-card {
-    background: rgba(124,58,237,0.07);
-    border: 2px solid rgba(124,58,237,0.35);
+    background: rgba(245,159,11,0.06);
+    border: 2px solid rgba(245,159,11,0.3);
     border-radius: 18px;
     padding: 24px 20px;
     margin-bottom: 20px;
@@ -273,18 +288,16 @@
     transition: all 0.2s;
     position: relative;
   }
-  .code-card:hover { border-color: var(--accent2); background: rgba(124,58,237,0.12); transform: scale(1.015); }
+  .code-card:hover { border-color: var(--accent); background: rgba(245,159,11,0.1); transform: scale(1.015); }
   .code-card:active { transform: scale(0.985); }
 
-  .code-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600; }
+  .code-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 700; }
   .code-value {
     font-size: 48px;
     font-weight: 900;
     letter-spacing: 10px;
     font-family: 'Courier New', monospace;
-    background: linear-gradient(135deg, #fff, var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--accent2);
     display: block;
     line-height: 1;
   }
@@ -313,19 +326,20 @@
     color: var(--accent2);
   }
   .code-timer-num.warn { color: var(--yellow); }
-  .code-timer-num.danger { color: var(--red); }
+  .code-timer-num.danger { color: var(--danger); }
 
   .btn-copy-code {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%;
     padding: 13px;
-    background: linear-gradient(135deg, var(--green), #059669);
+    background: var(--success);
     color: #fff; border: none; border-radius: 12px;
     font-size: 15px; font-weight: 800; cursor: pointer;
     transition: all 0.2s;
+    font-family: 'Tajawal', sans-serif;
   }
   .btn-copy-code:hover { opacity: 0.9; transform: translateY(-1px); }
-  .btn-copy-code.done { background: linear-gradient(135deg, #059669, #047857); }
+  .btn-copy-code.done { background: #16a34a; }
 
   /* ── No code ── */
   #no-code-msg {
@@ -338,14 +352,14 @@
   }
   #no-code-msg.show { display: block; }
   #no-code-msg p { color: var(--muted); font-size: 13px; }
-  #no-code-msg strong { color: var(--red); display: block; font-size: 15px; margin-bottom: 6px; }
+  #no-code-msg strong { color: var(--danger); display: block; font-size: 15px; margin-bottom: 6px; }
 
   /* ── Exhausted state ── */
   #state-exhausted { display: none; }
   #state-exhausted.show { display: block; }
   .exhausted-box {
-    background: rgba(245,158,11,0.07);
-    border: 1px solid rgba(245,158,11,0.3);
+    background: rgba(245,159,11,0.07);
+    border: 1px solid rgba(245,159,11,0.25);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 0;
@@ -355,7 +369,7 @@
     font-size: 36px; margin-bottom: 10px;
   }
   .exhausted-title {
-    font-size: 17px; font-weight: 800; color: var(--yellow);
+    font-size: 17px; font-weight: 800; color: var(--accent);
     margin-bottom: 6px;
   }
   .exhausted-sub {
@@ -378,6 +392,7 @@
     cursor: pointer;
     text-decoration: none;
     transition: all 0.2s;
+    font-family: 'Tajawal', sans-serif;
   }
   .btn-whatsapp:hover { background: #1db954; transform: scale(1.03); }
 
@@ -398,6 +413,7 @@
     position: absolute;
     top: 0;
     left: 0;
+    font-family: 'Tajawal', sans-serif;
   }
   .lang-toggle:hover { border-color: var(--accent); color: var(--text); }
   .lang-toggle .lang-opt {
@@ -406,8 +422,9 @@
     transition: all 0.2s;
   }
   .lang-toggle .lang-opt.active {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff;
+    background: var(--accent);
+    color: #000;
+    font-weight: 900;
   }
 
   /* ── Invalid ── */
@@ -415,7 +432,7 @@
   #state-invalid.show { display: block; }
   .invalid-icon {
     width: 64px; height: 64px; border-radius: 50%;
-    background: rgba(239,68,68,0.1); border: 2px solid var(--red);
+    background: rgba(239,68,68,0.1); border: 2px solid var(--danger);
     margin: 0 auto 16px;
     display: flex; align-items: center; justify-content: center;
   }
@@ -423,12 +440,13 @@
   /* ── Toast ── */
   #toast {
     position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: var(--green); color: #fff;
+    background: var(--success); color: #fff;
     padding: 12px 24px; border-radius: 12px;
     font-size: 15px; font-weight: 700;
     opacity: 0; transition: all 0.3s;
     z-index: 999; white-space: nowrap;
-    box-shadow: 0 8px 24px rgba(16,185,129,0.3);
+    box-shadow: 0 8px 24px rgba(34,197,94,0.3);
+    font-family: 'Tajawal', sans-serif;
   }
   #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
@@ -438,8 +456,7 @@
     color: var(--muted);
   }
   .footer span {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    color: var(--accent);
     font-weight: 700;
   }
 </style>
@@ -460,7 +477,10 @@
 
 <div class="wrap" style="position:relative;">
   <div style="position:relative; margin-bottom:28px; display:flex; align-items:center; justify-content:center;">
-    <div class="logo">Mr10x</div>
+    <a class="navbar-logo" href="/">
+      <div class="logo-mark">M</div>
+      <span class="logo-word">r10x.</span>
+    </a>
     <button class="lang-toggle" id="lang-btn" onclick="toggleLang()">
       <span class="lang-opt active" id="lang-ar">ع</span>
       <span class="lang-opt" id="lang-en">EN</span>
@@ -549,7 +569,7 @@
     <!-- Invalid -->
     <div id="state-invalid">
       <div class="invalid-icon">
-        <svg width="28" height="28" fill="none" stroke="var(--red)" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg width="28" height="28" fill="none" stroke="var(--danger)" stroke-width="2.5" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
         </svg>
       </div>
@@ -822,7 +842,7 @@ function showCode(code) {
 
     if (rem <= 10) {
       numEl.className = 'code-timer-num danger';
-      fillEl.style.background = 'var(--red)';
+      fillEl.style.background = 'var(--danger)';
     } else if (rem <= 20) {
       numEl.className = 'code-timer-num warn';
       fillEl.style.background = 'var(--yellow)';

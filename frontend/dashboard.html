@@ -8,28 +8,30 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0f;
-    --card: #13131c;
-    --card2: #1a1a26;
-    --border: #252535;
-    --accent: #7c3aed;
-    --accent2: #a855f7;
-    --green: #10b981;
+    --bg: #0e0e12;
+    --card: #17171d;
+    --card2: #1f1f28;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(245,159,11,0.3);
+    --accent: #f59f0b;
+    --accent2: #fbbf24;
+    --green: #22c55e;
     --red: #ef4444;
     --yellow: #f59e0b;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --muted2: #94a3b8;
+    --text: #f4f3ef;
+    --muted: #8a8898;
+    --muted2: #a9a8b8;
+    --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Tajawal', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Tajawal', system-ui, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
   }
 
-  /* ── Glow ── */
+  /* ── Ambient glow ── */
   body::before {
     content: '';
     position: fixed;
@@ -38,7 +40,7 @@
     transform: translateX(-50%);
     width: 900px;
     height: 400px;
-    background: radial-gradient(ellipse, rgba(124,58,237,0.1) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(245,159,11,0.07) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
@@ -46,7 +48,7 @@
   /* ── Navbar ── */
   .navbar {
     position: sticky; top: 0; z-index: 100;
-    background: rgba(10,10,15,0.85);
+    background: rgba(14,14,18,0.88);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
     padding: 0 24px;
@@ -54,13 +56,22 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .navbar-logo {
-    font-size: 20px; font-weight: 800;
-    background: linear-gradient(135deg, #a855f7, #7c3aed);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    display: flex; align-items: center; gap: 9px;
     text-decoration: none;
   }
+  .logo-mark {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: var(--accent); color: #000;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 900; flex-shrink: 0;
+    letter-spacing: -0.5px;
+  }
+  .logo-word {
+    font-size: 19px; font-weight: 800; color: var(--text);
+    letter-spacing: -0.5px;
+  }
   .navbar-right { display: flex; align-items: center; gap: 12px; }
-  .seller-name { font-size: 14px; color: var(--muted2); }
+  .seller-name { font-size: 13px; color: var(--muted); }
   .btn-logout {
     padding: 7px 16px; border-radius: 8px;
     background: transparent; border: 1px solid var(--border);
@@ -86,7 +97,7 @@
     font-family: inherit; transition: all 0.2s;
   }
   .tab-btn.active {
-    background: var(--accent); color: #fff;
+    background: var(--accent); color: #000; font-weight: 700;
   }
   .tab-btn:not(.active):hover { color: var(--text); }
 
@@ -102,11 +113,11 @@
   .btn-primary {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 10px 20px; border-radius: 10px;
-    background: var(--accent); color: #fff; border: none;
+    background: var(--accent); color: #000; border: none;
     font-size: 14px; font-weight: 700; cursor: pointer;
     font-family: inherit; transition: all 0.2s;
   }
-  .btn-primary:hover { background: #6d28d9; transform: translateY(-1px); }
+  .btn-primary:hover { background: #d97706; transform: translateY(-1px); }
   .btn-secondary {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 8px 16px; border-radius: 9px;
@@ -137,14 +148,16 @@
   }
   .stat-card {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 20px 20px 16px;
+    border-radius: var(--radius); padding: 20px 20px 16px;
   }
-  .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-label {
+    font-size: 11px; color: var(--muted); margin-bottom: 8px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  }
   .stat-value { font-size: 28px; font-weight: 800; }
-  .stat-value.purple { color: var(--accent2); }
+  .stat-value.amber { color: var(--accent); }
   .stat-value.green { color: var(--green); }
   .stat-value.red { color: var(--red); }
-  .stat-value.yellow { color: var(--yellow); }
 
   /* ── Empty state ── */
   .empty {
@@ -157,16 +170,14 @@
   .empty-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
 
   /* ── Slots grid ── */
-  .slots-grid {
-    display: grid; gap: 14px;
-  }
+  .slots-grid { display: grid; gap: 12px; }
   .slot-card {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 18px 20px;
+    border-radius: var(--radius); padding: 18px 20px;
     display: flex; align-items: center; gap: 16px;
     transition: border-color 0.2s;
   }
-  .slot-card:hover { border-color: rgba(124,58,237,0.4); }
+  .slot-card:hover { border-color: rgba(245,159,11,0.4); }
   .slot-status-dot {
     width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
   }
@@ -174,15 +185,18 @@
   .slot-status-dot.exhausted { background: var(--red); }
   .slot-info { flex: 1; min-width: 0; }
   .slot-label { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
-  .slot-meta { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .slot-meta {
+    font-size: 12px; color: var(--muted);
+    display: flex; gap: 12px; flex-wrap: wrap;
+  }
   .slot-meta span { display: flex; align-items: center; gap: 4px; }
   .slot-attempts {
     font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
     white-space: nowrap; flex-shrink: 0;
   }
-  .slot-attempts.ok { background: rgba(16,185,129,0.12); color: var(--green); }
-  .slot-attempts.warn { background: rgba(245,158,11,0.12); color: var(--yellow); }
-  .slot-attempts.none { background: rgba(239,68,68,0.12); color: var(--red); }
+  .slot-attempts.ok  { background: rgba(34,197,94,0.1);  color: var(--green); }
+  .slot-attempts.warn { background: rgba(245,159,11,0.12); color: var(--accent); }
+  .slot-attempts.none { background: rgba(239,68,68,0.1); color: var(--red); }
   .slot-link-btn {
     padding: 7px 14px; border-radius: 8px;
     background: var(--card2); border: 1px solid var(--border);
@@ -196,12 +210,14 @@
   /* ── Mailboxes ── */
   .mailbox-card {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 18px 20px;
+    border-radius: var(--radius); padding: 18px 20px;
     display: flex; align-items: center; gap: 16px;
+    transition: border-color 0.2s;
   }
+  .mailbox-card:hover { border-color: rgba(245,159,11,0.3); }
   .mailbox-icon {
     width: 42px; height: 42px; border-radius: 10px;
-    background: var(--card2); border: 1px solid var(--border);
+    background: rgba(245,159,11,0.1); border: 1px solid rgba(245,159,11,0.2);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     font-size: 20px;
   }
@@ -211,14 +227,14 @@
   .status-badge {
     font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
   }
-  .status-badge.connected { background: rgba(16,185,129,0.12); color: var(--green); }
-  .status-badge.error { background: rgba(239,68,68,0.12); color: var(--red); }
-  .status-badge.pending { background: rgba(245,158,11,0.12); color: var(--yellow); }
+  .status-badge.connected { background: rgba(34,197,94,0.1);  color: var(--green); }
+  .status-badge.error     { background: rgba(239,68,68,0.1);  color: var(--red); }
+  .status-badge.pending   { background: rgba(245,159,11,0.12); color: var(--accent); }
 
   /* ── Modal ── */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 1000;
-    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(5px);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     opacity: 0; pointer-events: none; transition: opacity 0.2s;
@@ -232,33 +248,37 @@
   .modal-overlay.open .modal { transform: translateY(0); }
   .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
   .form-group { margin-bottom: 16px; }
-  .form-label { font-size: 13px; font-weight: 600; color: var(--muted2); margin-bottom: 7px; display: block; }
+  .form-label {
+    font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 7px; display: block;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
   .form-input {
     width: 100%; padding: 11px 14px;
     background: var(--card2); border: 1px solid var(--border);
     border-radius: 10px; color: var(--text); font-size: 14px;
     font-family: inherit; transition: border-color 0.2s; outline: none;
   }
-  .form-input:focus { border-color: var(--accent); }
+  .form-input:focus { border-color: rgba(245,159,11,0.5); }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
   .btn-cancel {
     padding: 10px 20px; border-radius: 10px;
     background: var(--card2); border: 1px solid var(--border);
     color: var(--muted); font-size: 14px; cursor: pointer; font-family: inherit;
+    transition: color 0.2s;
   }
   .btn-cancel:hover { color: var(--text); }
 
   /* ── Toast ── */
   #toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: #1e1e2e; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
     padding: 12px 20px; font-size: 14px; font-weight: 600;
     transition: transform 0.3s; z-index: 9999; white-space: nowrap;
   }
   #toast.show { transform: translateX(-50%) translateY(0); }
   #toast.success { border-color: var(--green); color: var(--green); }
-  #toast.error { border-color: var(--red); color: var(--red); }
+  #toast.error   { border-color: var(--red);   color: var(--red); }
 
   /* ── Loading ── */
   .spinner {
@@ -271,7 +291,7 @@
   /* ── Link copy popup ── */
   .link-popup {
     position: fixed; inset: 0; z-index: 1000;
-    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(5px);
     display: flex; align-items: center; justify-content: center; padding: 20px;
     opacity: 0; pointer-events: none; transition: opacity 0.2s;
   }
@@ -304,7 +324,10 @@
 
 <!-- Navbar -->
 <nav class="navbar">
-  <a class="navbar-logo" href="/">Mr10x</a>
+  <a class="navbar-logo" href="/">
+    <div class="logo-mark">M</div>
+    <span class="logo-word">r10x.</span>
+  </a>
   <div class="navbar-right">
     <span class="seller-name" id="seller-name-display"></span>
     <button class="btn-logout" onclick="logout()">تسجيل الخروج</button>
@@ -322,7 +345,7 @@
   <!-- ══ TAB: SLOTS ══ -->
   <div id="tab-slots">
     <div class="stats-row" id="stats-row">
-      <div class="stat-card"><div class="stat-label">إجمالي الروابط</div><div class="stat-value purple" id="stat-total">—</div></div>
+      <div class="stat-card"><div class="stat-label">إجمالي الروابط</div><div class="stat-value amber" id="stat-total">—</div></div>
       <div class="stat-card"><div class="stat-label">روابط نشطة</div><div class="stat-value green" id="stat-active">—</div></div>
       <div class="stat-card"><div class="stat-label">استُنفدت</div><div class="stat-value red" id="stat-exhausted">—</div></div>
     </div>
@@ -484,7 +507,7 @@
 <div id="toast">تم</div>
 
 <script>
-const API = window.MR10X_API || 'https://mr10x-otp-production.up.railway.app';
+const API = window.MR10X_API || '';
 const FRONT = location.origin;
 
 // ── Auth ───────────────────────────────────────────────────────────────────

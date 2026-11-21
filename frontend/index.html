@@ -2,620 +2,1184 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mr10x — نظام OTP التلقائي</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR10X — لوحة التحكم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --card: #1a1a24;
-    --border: #2a2a3a;
-    --accent: #7c3aed;
-    --accent2: #a855f7;
-    --green: #10b981;
-    --red: #ef4444;
-    --yellow: #f59e0b;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --radius: 12px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── Navbar ── */
-  nav {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 32px;
-    background: rgba(10,10,15,0.9);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 100;
-  }
-  .logo {
-    font-size: 22px; font-weight: 800;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    letter-spacing: -0.5px;
-  }
-  .nav-actions { display: flex; gap: 10px; }
-  .btn {
-    padding: 8px 20px; border-radius: 8px; border: none;
-    font-size: 14px; font-weight: 600; cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-ghost {
-    background: transparent; color: var(--muted);
-    border: 1px solid var(--border);
-  }
-  .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff;
-  }
-  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-  .btn-sm { padding: 6px 14px; font-size: 13px; }
-  .btn-danger { background: var(--red); color: #fff; }
-  .btn-danger:hover { opacity: 0.85; }
-  .btn-green { background: var(--green); color: #fff; }
-  .btn-green:hover { opacity: 0.85; }
+:root {
+  --bg: #0e0e12;
+  --surface: #17171d;
+  --surface2: #1f1f28;
+  --border: rgba(255,255,255,0.07);
+  --border-hover: rgba(245,159,11,0.3);
+  --accent: #f59f0b;
+  --accent-dim: rgba(245,159,11,0.12);
+  --accent2: #fbbf24;
+  --text: #f4f3ef;
+  --muted: #8a8898;
+  --green: #22c55e;
+  --red: #ef4444;
+  --radius: 14px;
+}
 
-  /* ── Auth ── */
-  #auth-screen {
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-    background: radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.15) 0%, transparent 70%);
-  }
-  .auth-box {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 40px;
-    width: 100%; max-width: 420px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .auth-box h2 { font-size: 26px; margin-bottom: 6px; }
-  .auth-box p { color: var(--muted); margin-bottom: 28px; font-size: 14px; }
-  .form-group { margin-bottom: 18px; }
-  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
-  input, select {
-    width: 100%; padding: 11px 14px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 8px; color: var(--text); font-size: 14px;
-    transition: border-color 0.2s;
-    text-align: right;
-    direction: rtl;
-  }
-  input:focus, select:focus { outline: none; border-color: var(--accent); }
-  .auth-toggle {
-    text-align: center; margin-top: 16px;
-    font-size: 13px; color: var(--muted);
-  }
-  .auth-toggle span { color: var(--accent2); cursor: pointer; font-weight: 600; }
-  .auth-toggle span:hover { text-decoration: underline; }
+html, body { height: 100%; }
 
-  /* ── Plan selector cards (register only) ── */
-  .plan-label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
-  .plan-cards {
-    display: flex; flex-direction: column; gap: 10px;
-    margin-bottom: 18px;
-  }
-  .plan-card {
-    display: flex; align-items: flex-start; gap: 12px;
-    padding: 14px 16px;
-    background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    position: relative;
-  }
-  .plan-card:hover { border-color: var(--accent); }
-  .plan-card.selected {
-    border-color: var(--accent2);
-    background: rgba(124,58,237,0.08);
-  }
-  .plan-card input[type="radio"] { display: none; }
-  .plan-radio {
-    width: 18px; height: 18px; min-width: 18px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    margin-top: 2px;
-    display: flex; align-items: center; justify-content: center;
-    transition: border-color 0.2s;
-  }
-  .plan-card.selected .plan-radio {
-    border-color: var(--accent2);
-    background: var(--accent2);
-  }
-  .plan-card.selected .plan-radio::after {
-    content: '';
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: #fff;
-  }
-  .plan-info { flex: 1; }
-  .plan-name {
-    font-size: 14px; font-weight: 700; color: var(--text);
-    margin-bottom: 2px;
-  }
-  .plan-desc {
-    font-size: 12px; color: var(--muted); line-height: 1.5;
-  }
-  .plan-badge-reg {
-    font-size: 11px; font-weight: 700;
-    padding: 3px 8px; border-radius: 20px;
-    white-space: nowrap; align-self: center;
-  }
-  .plan-badge-reg.p1 { background: rgba(239,68,68,0.15); color: #f87171; }
-  .plan-badge-reg.p2 { background: rgba(16,185,129,0.15); color: #34d399; }
-  .plan-badge-reg.p3 { background: rgba(245,158,11,0.15); color: #fbbf24; }
+body {
+  font-family: 'Tajawal', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
 
-  /* ── Subscription Warning Banner ── */
-  #sub-warning-banner {
-    display: none;
-    margin: 20px 32px 0;
-    padding: 14px 20px;
-    background: rgba(245,158,11,0.12);
-    border: 1px solid rgba(245,158,11,0.45);
-    border-radius: 10px;
-    color: #fcd34d;
-    font-size: 14px;
-    font-weight: 500;
-    display: none;
-    align-items: center;
-    gap: 12px;
-    line-height: 1.5;
-  }
-  #sub-warning-banner.show {
-    display: flex;
-  }
-  #sub-warning-banner .warn-icon { font-size: 20px; flex-shrink: 0; }
-  #sub-warning-banner .warn-text { flex: 1; }
-  #sub-warning-banner .warn-text strong { color: #fbbf24; }
-  .btn-renew {
-    white-space: nowrap;
-    padding: 8px 16px;
-    border-radius: 8px;
-    background: rgba(245,158,11,0.2);
-    border: 1px solid rgba(245,158,11,0.5);
-    color: #fbbf24;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .btn-renew:hover {
-    background: rgba(245,158,11,0.35);
-    transform: translateY(-1px);
-  }
+/* ── Auth Screen ── */
+#auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
 
-  /* ── Dashboard ── */
-  #dashboard { display: none; }
-  .dash-header {
-    padding: 24px 32px 0;
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 12px;
-  }
-  .dash-header h1 { font-size: 22px; }
-  .dash-header h1 span { color: var(--accent2); }
+#auth-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 20%, rgba(245,159,11,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 80%, rgba(245,159,11,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
 
-  /* ── Stats row ── */
-  .stats-row {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 16px; padding: 20px 32px;
-  }
-  .stat-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-  }
-  .stat-card .num { font-size: 28px; font-weight: 800; color: var(--accent2); }
-  .stat-card .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
 
-  /* ── Tabs ── */
-  .tabs {
-    display: flex; gap: 4px;
-    padding: 0 32px;
-    border-bottom: 1px solid var(--border);
-  }
-  .tab {
-    padding: 12px 20px; cursor: pointer;
-    font-size: 14px; font-weight: 500; color: var(--muted);
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-  }
-  .tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
-  .tab-content { display: none; padding: 24px 32px; }
-  .tab-content.active { display: block; }
+.auth-card-top {
+  padding: 36px 36px 28px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
 
-  /* ── Section header ── */
-  .section-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 20px;
-  }
-  .section-header h2 { font-size: 17px; }
+.auth-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
 
-  /* ── Cards list ── */
-  .cards-list { display: grid; gap: 12px; }
-  .item-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 20px;
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px;
-    transition: border-color 0.2s;
-  }
-  .item-card:hover { border-color: rgba(124,58,237,0.4); }
-  .item-card .info { flex: 1; }
-  .item-card .title { font-size: 15px; font-weight: 600; }
-  .item-card .meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .badge {
-    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-  }
-  .badge-green { background: rgba(16,185,129,0.15); color: var(--green); }
-  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
-  .badge-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.auth-logo-mark {
+  width: 42px;
+  height: 42px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0e0e12;
+  letter-spacing: -1px;
+  flex-shrink: 0;
+}
 
-  /* ── Slot token ── */
-  .token-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-family: monospace; font-size: 12px;
-    color: var(--accent2);
-    display: flex; align-items: center; gap: 8px;
-    cursor: pointer; transition: border-color 0.2s;
-    max-width: 300px; overflow: hidden;
-  }
-  .token-box:hover { border-color: var(--accent); }
-  .token-box span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.auth-logo-text {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
 
-  /* ── Modal ── */
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 200; padding: 20px;
-    display: none;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 32px;
-    width: 100%; max-width: 460px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  }
-  .modal h3 { font-size: 20px; margin-bottom: 20px; }
-  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-  .details-toggle { font-size: 12px; color: var(--accent2); cursor: pointer; margin-top: 6px; display: inline-block; }
-  .advanced { display: none; margin-top: 12px; }
-  .advanced.open { display: block; }
+.auth-logo-text span { color: var(--accent); }
 
-  /* ── Toast ── */
-  #toast {
-    position: fixed; bottom: 24px; right: 24px;
-    background: var(--accent); color: #fff;
-    padding: 12px 20px; border-radius: 10px;
-    font-size: 14px; font-weight: 600;
-    transform: translateY(80px); opacity: 0;
-    transition: all 0.3s;
-    z-index: 999;
-  }
-  #toast.show { transform: translateY(0); opacity: 1; }
+.auth-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
 
-  /* ── Empty ── */
-  .empty {
-    text-align: center; padding: 48px 20px;
-    color: var(--muted); font-size: 14px;
-  }
-  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+.auth-sub {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
 
-  /* ── Gmail hint ── */
-  .gmail-hint {
-    background: rgba(251,191,36,0.1); color: #d97706;
-    border: 1px solid rgba(251,191,36,0.4);
-    border-radius: 8px; padding: 10px 14px;
-    font-size: 12.5px; margin-top: 8px; line-height: 1.6;
-    direction: rtl;
-  }
-  .gmail-hint a { color: #2563eb; text-decoration: underline; }
+.auth-card-body { padding: 28px 36px 36px; }
 
-  /* ── Error msg ── */
-  .error-msg {
-    background: rgba(239,68,68,0.1); color: var(--red);
-    border: 1px solid rgba(239,68,68,0.3);
-    border-radius: 8px; padding: 10px 14px;
-    font-size: 13px; margin-top: 12px; display: none;
-  }
-  .success-msg {
-    background: rgba(16,185,129,0.1); color: var(--green);
-    border: 1px solid rgba(16,185,129,0.3);
-    border-radius: 8px; padding: 10px 14px;
-    font-size: 13px; margin-top: 12px; display: none;
-  }
+/* Plan Selector */
+.plan-selector { margin-bottom: 20px; }
 
-  @media (max-width: 600px) {
-    nav { padding: 12px 16px; }
-    .dash-header, .tabs, .tab-content, .stats-row { padding-right: 16px; padding-left: 16px; }
-    .auth-box { padding: 28px 20px; }
-  }
+.plan-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+  display: block;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.plan-opt {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 8px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  text-align: center;
+  position: relative;
+}
+
+.plan-opt:hover { border-color: var(--border-hover); }
+
+.plan-opt.selected {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.plan-opt input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.plan-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.plan-opt.selected .plan-name { color: var(--accent2); }
+
+.plan-price {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.plan-dur {
+  font-size: 11px;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
+}
+
+/* Form */
+.field { margin-bottom: 16px; }
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+  -webkit-appearance: none;
+}
+
+.field input:focus { border-color: var(--border-hover); }
+.field input::placeholder { color: var(--muted); opacity: .6; }
+
+.field input[dir="ltr"] { direction: ltr; text-align: left; }
+
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #0e0e12;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s, transform .15s;
+  margin-top: 4px;
+}
+
+.btn-primary:hover { opacity: .92; }
+.btn-primary:active { transform: scale(.98); }
+
+.auth-toggle {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.auth-toggle a {
+  color: var(--accent2);
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-toggle a:hover { text-decoration: underline; }
+
+.error-msg {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--red);
+  margin-bottom: 14px;
+  display: none;
+}
+
+/* Verify Box */
+#verify-box {
+  display: none;
+  padding: 36px;
+}
+
+.verify-icon {
+  width: 56px;
+  height: 56px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(245,159,11,0.3);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin: 0 auto 16px;
+}
+
+.verify-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.verify-sub {
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.verify-sub span {
+  color: var(--accent2);
+  font-weight: 600;
+}
+
+.code-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.code-row input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  text-align: center;
+  letter-spacing: 4px;
+  direction: ltr;
+  transition: border-color .2s;
+}
+
+.code-row input:focus { border-color: var(--border-hover); }
+
+.verify-actions { display: flex; flex-direction: column; gap: 10px; }
+
+.btn-outline {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+
+.btn-outline:hover { border-color: var(--border-hover); color: var(--text); }
+
+/* ── Dashboard ── */
+#dashboard-screen { display: none; }
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 62px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.topbar-logo-mark {
+  width: 34px;
+  height: 34px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0e0e12;
+}
+
+.topbar-brand {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.topbar-brand span { color: var(--accent); }
+
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px 6px 6px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(245,159,11,0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent2);
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+
+.btn-logout:hover { border-color: rgba(239,68,68,0.4); color: var(--red); }
+
+/* Subscription Banner */
+#sub-banner {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sub-info { display: flex; align-items: center; gap: 10px; }
+
+.sub-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  box-shadow: 0 0 8px var(--green);
+}
+
+.sub-dot.warning { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.sub-dot.expired { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+.sub-text { font-size: 14px; color: var(--text); }
+
+.sub-text span {
+  font-weight: 700;
+  color: var(--green);
+}
+
+.sub-text span.warning { color: var(--accent); }
+.sub-text span.expired { color: var(--red); }
+
+.sub-plan {
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--accent-dim);
+  border: 1px solid rgba(245,159,11,0.2);
+  border-radius: 20px;
+  padding: 3px 10px;
+  color: var(--accent2);
+}
+
+.btn-renew {
+  background: transparent;
+  border: 1px solid rgba(245,159,11,0.3);
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .2s;
+  white-space: nowrap;
+}
+
+.btn-renew:hover { background: var(--accent-dim); }
+
+/* Dashboard Content */
+.dash-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 24px;
+  width: fit-content;
+}
+
+.tab {
+  padding: 9px 20px;
+  border-radius: 9px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  transition: background .2s, color .2s;
+}
+
+.tab.active {
+  background: var(--accent);
+  color: #0e0e12;
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Section Header */
+.section-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.section-count {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.btn-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #0e0e12;
+  border: none;
+  border-radius: 9px;
+  padding: 9px 16px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+
+.btn-add:hover { opacity: .9; }
+
+/* Cards */
+.card-list { display: flex; flex-direction: column; gap: 10px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  transition: border-color .2s;
+}
+
+.card:hover { border-color: rgba(255,255,255,0.12); }
+
+.card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(245,159,11,0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.card-info { min-width: 0; }
+
+.card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-meta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+  direction: ltr;
+  text-align: right;
+}
+
+.card-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+/* Webhook */
+.webhook-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.webhook-url {
+  flex: 1;
+  font-size: 12px;
+  color: var(--muted);
+  direction: ltr;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: monospace;
+}
+
+/* Action Buttons */
+.btn-sm {
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  transition: border-color .2s, color .2s, background .2s;
+  white-space: nowrap;
+}
+
+.btn-sm:hover { border-color: rgba(255,255,255,0.15); color: var(--text); }
+
+.btn-sm.danger:hover { border-color: rgba(239,68,68,0.4); color: var(--red); background: rgba(239,68,68,0.06); }
+
+.btn-sm.accent {
+  border-color: rgba(245,159,11,0.3);
+  color: var(--accent);
+}
+
+.btn-sm.accent:hover { background: var(--accent-dim); border-color: rgba(245,159,11,0.5); }
+
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.badge-green {
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.2);
+  color: var(--green);
+}
+
+.badge-red {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.2);
+  color: var(--red);
+}
+
+.badge-muted {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 56px 24px;
+  color: var(--muted);
+}
+
+.empty-icon {
+  font-size: 36px;
+  margin-bottom: 14px;
+  opacity: .5;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.empty-sub { font-size: 14px; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+  transform: translateY(10px) scale(.98);
+  transition: transform .2s;
+}
+
+.modal-overlay.open .modal { transform: none; }
+
+.modal-header {
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title { font-size: 17px; font-weight: 700; }
+
+.modal-close {
+  width: 30px;
+  height: 30px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--muted);
+  transition: color .2s;
+}
+
+.modal-close:hover { color: var(--text); }
+
+.modal-body { padding: 22px 24px 24px; }
+
+.modal-field { margin-bottom: 16px; }
+
+.modal-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.modal-field input,
+.modal-field select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+  -webkit-appearance: none;
+}
+
+.modal-field input:focus,
+.modal-field select:focus { border-color: var(--border-hover); }
+
+.modal-field select { cursor: pointer; }
+
+.modal-field input[dir="ltr"] { direction: ltr; text-align: left; }
+
+.modal-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(245,159,11,0.15);
+  border-radius: 8px;
+  line-height: 1.6;
+}
+
+.modal-err {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--red);
+  margin-bottom: 14px;
+  display: none;
+}
+
+.modal-ok {
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--green);
+  margin-bottom: 14px;
+  display: none;
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--surface2);
+  border: 1px solid rgba(245,159,11,0.25);
+  border-radius: 10px;
+  padding: 12px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 9999;
+  white-space: nowrap;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* WA link */
+.wa-link-row {
+  margin-top: 10px;
+}
+
+.wa-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--green);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.wa-link:hover { text-decoration: underline; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .auth-card-top { padding: 28px 24px 20px; }
+  .auth-card-body { padding: 20px 24px 28px; }
+
+  .topbar { padding: 0 16px; }
+  .topbar-brand { display: none; }
+
+  .dash-content { padding: 20px 16px 60px; }
+
+  .plan-grid { grid-template-columns: repeat(3, 1fr); }
+
+  .card-actions { width: 100%; justify-content: flex-end; }
+}
 </style>
 </head>
 <body>
 
-<!-- ── Navbar ── -->
-<nav>
-  <div class="logo">Mr10x</div>
-  <div class="nav-actions">
-    <span id="seller-name" style="color:var(--muted);font-size:14px;display:none"></span>
-    <button class="btn btn-ghost btn-sm" id="logout-btn" onclick="logout()" style="display:none">خروج</button>
-  </div>
-</nav>
-
-<!-- ── Auth Screen ── -->
+<!-- ═══════════════════ AUTH SCREEN ═══════════════════ -->
 <div id="auth-screen">
-  <div class="auth-box">
-    <div class="logo" style="font-size:28px;margin-bottom:16px">Mr10x</div>
-    <h2 id="auth-title">تسجيل الدخول</h2>
-    <p id="auth-sub">إدارة صناديق الإيميل وأكواد التحقق تلقائياً</p>
-    <!-- حالة الانتظار بعد التسجيل -->
-    <div id="pending-box" style="display:none; text-align:center; padding:10px 0">
-      <div style="font-size:48px; margin-bottom:16px">✅</div>
-      <h3 style="margin-bottom:10px; font-size:20px">وصلنا طلبك!</h3>
-      <p style="color:var(--muted); font-size:15px; line-height:1.7">
-        راح نتواصل معك على الواتساب قريباً لتفعيل حسابك.
-      </p>
-      <a id="pending-wa-link" href="https://wa.me/966580198626" target="_blank" rel="noopener"
-        style="display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:10px 24px;background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.4);color:#25d366;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        تواصل معنا على الواتساب
-      </a>
+  <div class="auth-card">
+
+    <!-- Top -->
+    <div class="auth-card-top">
+      <div class="auth-logo">
+        <div class="auth-logo-mark">M</div>
+        <div class="auth-logo-text">MR<span>10X</span></div>
+      </div>
+      <div id="auth-form-content">
+        <div class="auth-title" id="auth-title">تسجيل الدخول</div>
+        <div class="auth-sub" id="auth-sub">مرحباً بك مجدداً — أدخل بياناتك للمتابعة</div>
+      </div>
     </div>
 
-    <!-- شاشة إدخال كود التحقق -->
-    <div id="verify-box" style="display:none; text-align:center; padding:10px 0">
-      <div style="font-size:48px; margin-bottom:16px">📧</div>
-      <h3 style="margin-bottom:10px; font-size:20px">تأكيد البريد الإلكتروني</h3>
-      <p style="color:var(--muted); font-size:14px; line-height:1.7; margin-bottom:20px">
-        أرسلنا كود من 6 أرقام إلى بريدك — أدخله هنا للمتابعة.
-      </p>
-      <div class="form-group" style="text-align:right">
-        <label>كود التحقق</label>
-        <input type="text" id="verify-code-input" placeholder="000000" dir="ltr"
-          maxlength="6" inputmode="numeric"
-          style="text-align:center; font-size:24px; letter-spacing:6px; font-weight:700"
-          onkeyup="if(event.key==='Enter')confirmVerify()"
-          oninput="const e=document.getElementById('verify-err');if(e.style.color==='var(--green)'){e.style.display='none';e.style.color=''}">
+    <!-- Verify Box -->
+    <div id="verify-box">
+      <div class="verify-icon">📧</div>
+      <div class="verify-title">تحقق من بريدك</div>
+      <div class="verify-sub">أرسلنا رمز التحقق إلى<br><span id="verify-email-label"></span></div>
+      <div id="verify-err" class="error-msg"></div>
+      <div class="code-row">
+        <input type="text" id="verify-code" inputmode="numeric" maxlength="6" placeholder="000000"
+          onkeyup="if(event.key==='Enter')confirmVerify()">
       </div>
-      <div id="verify-err" class="error-msg" style="display:none; text-align:right"></div>
-      <button class="btn btn-primary" style="width:100%;padding:12px" onclick="confirmVerify()">تأكيد</button>
-
-      <!-- زر إعادة الإرسال مع العداد -->
-      <div style="margin-top:16px">
-        <button id="resend-btn" onclick="resendCode()"
-          disabled
-          style="background:none;border:1px solid var(--border);color:var(--muted);cursor:not-allowed;
-                 padding:9px 20px;border-radius:8px;font-size:13px;font-family:inherit;
-                 width:100%;transition:all 0.2s;line-height:1.4">
-          <span id="resend-text">إعادة إرسال الكود خلال <span id="resend-timer">60</span> ثانية</span>
-        </button>
+      <div class="verify-actions">
+        <button class="btn-primary" onclick="confirmVerify()">تأكيد الحساب</button>
+        <button class="btn-outline" id="resend-btn" onclick="resendCode()">إعادة إرسال الرمز</button>
+        <button class="btn-outline" onclick="backToRegister()">العودة للتسجيل</button>
       </div>
-
-      <button onclick="backToRegister()"
-        style="background:none;border:none;color:var(--muted);cursor:pointer;margin-top:12px;font-size:13px;font-family:inherit">
-        ← تعديل البيانات
-      </button>
+      <div class="wa-link-row" id="wa-link-container" style="text-align:center;margin-top:16px;"></div>
     </div>
 
-    <!-- فورم تسجيل الدخول / التسجيل -->
-    <div id="auth-form-content">
-      <div id="register-name-group" class="form-group" style="display:none">
-        <label>الاسم الكامل</label>
-        <input type="text" id="auth-name" placeholder="اسمك">
-      </div>
-      <div class="form-group">
-        <label>البريد الإلكتروني</label>
-        <input type="email" id="auth-email" placeholder="example@email.com" dir="ltr">
-      </div>
-      <div id="register-phone-group" class="form-group" style="display:none">
-        <label>رقم الواتساب</label>
-        <input type="tel" id="auth-phone" placeholder="05xxxxxxxx" dir="ltr">
-      </div>
+    <!-- Auth Body -->
+    <div class="auth-card-body" id="auth-body">
 
-      <div class="form-group">
-        <label>كلمة المرور</label>
-        <input type="password" id="auth-password" placeholder="••••••••" dir="ltr">
-      </div>
-      <!-- اختيار الباقة — يظهر فقط عند التسجيل -->
-      <div id="register-plan-group" style="display:none">
-        <span class="plan-label">اختر الباقة المناسبة</span>
-        <div class="plan-cards">
-
-          <label class="plan-card" id="plan-card-1" onclick="selectPlan('plan1')">
-            <input type="radio" name="reg-plan" value="plan1">
-            <div class="plan-radio"></div>
-            <div class="plan-info">
-              <div class="plan-name">الباقة الأساسية</div>
-              <div class="plan-desc">تطبيق واحد فقط — مناسب للتجربة</div>
-            </div>
-            <span class="plan-badge-reg p1">تطبيق ×١</span>
+      <!-- Plan selector (register only) -->
+      <div class="plan-selector" id="plan-selector" style="display:none;">
+        <span class="plan-label">اختر الباقة</span>
+        <div class="plan-grid">
+          <label class="plan-opt selected" onclick="selectPlan('plan1')">
+            <input type="radio" name="plan" value="plan1" checked>
+            <span class="plan-name">أساسية</span>
+            <div class="plan-price">30</div>
+            <span class="plan-dur">ريال / شهر</span>
           </label>
-
-          <label class="plan-card selected" id="plan-card-2" onclick="selectPlan('plan2')">
-            <input type="radio" name="reg-plan" value="plan2" checked>
-            <div class="plan-radio"></div>
-            <div class="plan-info">
-              <div class="plan-name">الباقة الاحترافية</div>
-              <div class="plan-desc">تطبيقات غير محدودة — الأكثر شيوعاً</div>
-            </div>
-            <span class="plan-badge-reg p2">غير محدود</span>
+          <label class="plan-opt" onclick="selectPlan('plan2')">
+            <input type="radio" name="plan" value="plan2">
+            <span class="plan-name">احترافية</span>
+            <div class="plan-price">60</div>
+            <span class="plan-dur">ريال / شهر</span>
           </label>
-
-          <label class="plan-card" id="plan-card-3" onclick="selectPlan('plan3')">
-            <input type="radio" name="reg-plan" value="plan3">
-            <div class="plan-radio"></div>
-            <div class="plan-info">
-              <div class="plan-name">باقة المتاجر الكبيرة</div>
-              <div class="plan-desc">كل الميزات بلا حدود — للعملاء المحترفين</div>
-            </div>
-            <span class="plan-badge-reg p3">كل الميزات</span>
+          <label class="plan-opt" onclick="selectPlan('plan3')">
+            <input type="radio" name="plan" value="plan3">
+            <span class="plan-name">متقدمة</span>
+            <div class="plan-price">139</div>
+            <span class="plan-dur">ريال / شهر</span>
           </label>
-
         </div>
       </div>
 
+      <!-- Error -->
       <div id="auth-err" class="error-msg"></div>
-      <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitAuth()" id="auth-submit-btn">دخول</button>
-      <a id="forgot-link" href="/reset-password.html" style="display:block;text-align:center;margin-top:12px;color:var(--muted);font-size:13px;text-decoration:none;">نسيت كلمة المرور؟</a>
+
+      <!-- Name (register only) -->
+      <div class="field" id="name-field" style="display:none;">
+        <label>الاسم الكامل</label>
+        <input type="text" id="name" placeholder="مثال: أحمد المحمد">
+      </div>
+
+      <!-- Email -->
+      <div class="field">
+        <label>البريد الإلكتروني</label>
+        <input type="email" id="email" placeholder="you@example.com" dir="ltr">
+      </div>
+
+      <!-- Password -->
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input type="password" id="password" placeholder="••••••••" dir="ltr">
+      </div>
+
+      <!-- Confirm Password (register only) -->
+      <div class="field" id="confirm-field" style="display:none;">
+        <label>تأكيد كلمة المرور</label>
+        <input type="password" id="confirm-password" placeholder="••••••••" dir="ltr">
+      </div>
+
+      <button class="btn-primary" id="submit-btn" onclick="submitAuth()">دخول</button>
+
       <div class="auth-toggle">
-        <span id="auth-switch-text">ما عندك حساب؟</span>
-        <span onclick="toggleAuthMode()"> <span id="auth-switch-btn">سجّل الحين</span></span>
+        <span id="toggle-text">ليس لديك حساب؟</span>
+        <a onclick="toggleAuthMode()" id="toggle-link">سجّل الآن</a>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════ DASHBOARD ═══════════════════ -->
+<div id="dashboard-screen">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-logo-mark">M</div>
+      <div class="topbar-brand">MR<span>10X</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar-initials">؟</div>
+        <span id="topbar-username"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">خروج</button>
+    </div>
+  </div>
+
+  <!-- Sub Banner -->
+  <div id="sub-banner">
+    <div class="sub-info">
+      <div class="sub-dot" id="sub-dot"></div>
+      <div class="sub-text">الاشتراك: <span id="days-num">...</span></div>
+      <div class="sub-plan" id="plan-badge"></div>
+    </div>
+    <a class="btn-renew" id="renew-wa-link" href="#" target="_blank">تجديد الاشتراك</a>
+  </div>
+
+  <!-- Content -->
+  <div class="dash-content">
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('mailboxes', this)">📧 صناديق البريد</button>
+      <button class="tab" onclick="switchTab('slots', this)">🔗 الروابط</button>
+    </div>
+
+    <!-- Mailboxes Panel -->
+    <div class="tab-panel active" id="panel-mailboxes">
+      <div class="section-hd">
+        <div>
+          <div class="section-title">صناديق البريد</div>
+          <div class="section-count" id="mailboxes-count"></div>
+        </div>
+        <button class="btn-add" onclick="openAddMailbox()">
+          <span>+</span> إضافة صندوق
+        </button>
+      </div>
+      <div class="card-list" id="mailboxes-list">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">لا توجد صناديق بريد</div>
+          <div class="empty-sub">أضف صندوق بريد لبدء استقبال رموز OTP</div>
+        </div>
       </div>
     </div>
+
+    <!-- Slots Panel -->
+    <div class="tab-panel" id="panel-slots">
+      <div class="section-hd">
+        <div>
+          <div class="section-title">روابط OTP</div>
+          <div class="section-count" id="slots-count"></div>
+        </div>
+        <button class="btn-add" onclick="openAddSlot()">
+          <span>+</span> إضافة رابط
+        </button>
+      </div>
+      <div class="card-list" id="slots-list">
+        <div class="empty-state">
+          <div class="empty-icon">🔗</div>
+          <div class="empty-title">لا توجد روابط</div>
+          <div class="empty-sub">أضف رابطاً لزبون لبدء إرسال الرموز</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<!-- ── Dashboard ── -->
-<div id="dashboard">
-  <div class="dash-header">
-    <h1>لوحة التحكم <span id="dash-name"></span></h1>
-    <button class="btn btn-primary btn-sm" onclick="openAddMailbox()">+ ربط صندوق إيميل</button>
-  </div>
+<!-- ═══════════════════ MODALS ═══════════════════ -->
 
-  <!-- تحذير انتهاء الاشتراك -->
-  <div id="sub-warning-banner">
-    <div class="warn-icon">⚠️</div>
-    <div class="warn-text">
-      <strong id="warn-days-text">باقي لك 5 أيام</strong> على انتهاء اشتراكك — هل تودّ التجديد قبل الانقطاع؟
-    </div>
-    <a id="warn-wa-link" class="btn-renew" target="_blank" rel="noopener">
-      <span>💬</span> تواصل للتجديد
-    </a>
-  </div>
-
-  <div class="stats-row" id="stats-row">
-    <div class="stat-card"><div class="num" id="stat-mailboxes">0</div><div class="lbl">صناديق الإيميل</div></div>
-    <div class="stat-card"><div class="num" id="stat-slots">0</div><div class="lbl">روابط الزبائن</div></div>
-    <div class="stat-card"><div class="num" id="stat-codes">0</div><div class="lbl">أكواد تم تسليمها</div></div>
-    <div class="stat-card" id="stat-sub-card"><div class="num" id="stat-sub">—</div><div class="lbl">أيام الاشتراك</div></div>
-  </div>
-
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('mailboxes', this)">صناديق الإيميل</div>
-    <div class="tab" onclick="switchTab('slots', this)">روابط الزبائن</div>
-  </div>
-
-  <!-- Mailboxes Tab -->
-  <div class="tab-content active" id="tab-mailboxes">
-    <div class="section-header">
-      <h2>صناديق الإيميل المربوطة</h2>
-      <button class="btn btn-primary btn-sm" onclick="openAddMailbox()">+ إضافة</button>
-    </div>
-    <div class="cards-list" id="mailboxes-list"></div>
-  </div>
-
-  <!-- Slots Tab -->
-  <div class="tab-content" id="tab-slots">
-    <div class="section-header">
-      <h2>روابط الزبائن</h2>
-      <button class="btn btn-primary btn-sm" onclick="openAddSlot()">+ إنشاء رابط</button>
-    </div>
-    <div class="cards-list" id="slots-list"></div>
-  </div>
-</div>
-
-<!-- ── Add Mailbox Modal ── -->
-<div class="modal-overlay" id="add-mailbox-modal">
+<!-- Add Mailbox -->
+<div class="modal-overlay" id="add-mailbox-modal" onclick="if(event.target===this)closeModal('add-mailbox-modal')">
   <div class="modal">
-    <h3>إضافة صندوق إيميل</h3>
-    <div class="form-group">
-      <label>البريد الإلكتروني</label>
-      <input type="email" id="mb-email" placeholder="user@gmail.com" dir="ltr">
+    <div class="modal-header">
+      <span class="modal-title">إضافة صندوق بريد</span>
+      <button class="modal-close" onclick="closeModal('add-mailbox-modal')">✕</button>
     </div>
-    <div class="form-group">
-      <label>وصف (اختياري)</label>
-      <input type="text" id="mb-label" placeholder="مثال: حساب Netflix الرئيسي">
-    </div>
-    <div style="margin-top:16px;padding:10px 14px;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.18);border-radius:10px;font-size:13px;color:var(--muted)">
-      📬 بعد الإضافة، افتح Gmail وفعّل <b>التوجيه (Forwarding)</b> على الرابط اللي يظهر في البطاقة
-    </div>
-    <div id="mb-err" class="error-msg"></div>
-    <div id="mb-ok" class="success-msg">تمت الإضافة ✓</div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('add-mailbox-modal')">إلغاء</button>
-      <button class="btn btn-primary" onclick="addMailbox()">إضافة الصندوق</button>
+    <div class="modal-body">
+      <div class="modal-err" id="mb-err"></div>
+      <div class="modal-ok" id="mb-ok">✓ تمت الإضافة بنجاح</div>
+      <div class="modal-field">
+        <label>البريد الإلكتروني</label>
+        <input type="email" id="mb-email" placeholder="shop@gmail.com" dir="ltr">
+      </div>
+      <div class="modal-field">
+        <label>اسم مميز (اختياري)</label>
+        <input type="text" id="mb-label" placeholder="مثال: متجر علي">
+      </div>
+      <div class="modal-hint">
+        بعد الإضافة، اربط حسابك بـ Gmail لاستقبال رموز OTP تلقائياً.
+      </div>
+      <button class="btn-primary" style="margin-top:16px;" onclick="addMailbox()">إضافة الصندوق</button>
     </div>
   </div>
 </div>
 
-<!-- ── Add Slot Modal ── -->
-<div class="modal-overlay" id="add-slot-modal">
+<!-- Add Slot -->
+<div class="modal-overlay" id="add-slot-modal" onclick="if(event.target===this)closeModal('add-slot-modal')">
   <div class="modal">
-    <h3>إنشاء رابط زبون</h3>
-    <div class="form-group">
-      <label>الصندوق المرتبط</label>
-      <select id="slot-mailbox" onchange="autoFillSlotEmail()"></select>
+    <div class="modal-header">
+      <span class="modal-title">إضافة رابط OTP</span>
+      <button class="modal-close" onclick="closeModal('add-slot-modal')">✕</button>
     </div>
-    <div class="form-group">
-      <label>اسم الزبون / الخدمة</label>
-      <input type="text" id="slot-label" placeholder="مثال: زبون 1 - Netflix">
-    </div>
-    <div class="form-group">
-      <label>إيميل الحساب (يظهر للعميل)</label>
-      <input type="text" id="slot-account-email" placeholder="مثال: netflix_account@gmail.com" dir="ltr">
-    </div>
-    <div class="form-group">
-      <label>باسورد الحساب (يظهر للعميل)</label>
-      <input type="text" id="slot-account-pass" placeholder="مثال: MyPass123" dir="ltr">
-    </div>
-    <div class="form-group">
-      <label>عدد الروابط</label>
-      <input type="number" id="slot-count" value="1" min="1" max="50" dir="ltr">
-    </div>
-    <div id="slot-err" class="error-msg"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('add-slot-modal')">إلغاء</button>
-      <button class="btn btn-primary" onclick="addSlot()">إنشاء الرابط</button>
+    <div class="modal-body">
+      <div class="modal-err" id="slot-err"></div>
+      <div class="modal-field">
+        <label>اختر الصندوق</label>
+        <select id="slot-mailbox" onchange="autoFillSlotEmail()"></select>
+      </div>
+      <div class="modal-field">
+        <label>اسم الزبون</label>
+        <input type="text" id="slot-label" placeholder="مثال: متجر نون">
+      </div>
+      <div class="modal-field">
+        <label>بريد الحساب</label>
+        <input type="email" id="slot-account-email" placeholder="account@example.com" dir="ltr">
+      </div>
+      <div class="modal-field">
+        <label>كلمة مرور الحساب</label>
+        <input type="password" id="slot-account-pass" placeholder="••••••••" dir="ltr">
+      </div>
+      <div class="modal-field">
+        <label>عدد الروابط</label>
+        <input type="number" id="slot-count" value="1" min="1" max="10" dir="ltr">
+      </div>
+      <button class="btn-primary" style="margin-top:4px;" onclick="addSlot()">إنشاء الرابط</button>
     </div>
   </div>
 </div>
 
-<!-- ── Edit Slot Credentials Modal ── -->
-<div class="modal-overlay" id="edit-slot-modal">
+<!-- Edit Slot -->
+<div class="modal-overlay" id="edit-slot-modal" onclick="if(event.target===this)closeModal('edit-slot-modal')">
   <div class="modal">
-    <h3>تعديل بيانات الحساب</h3>
-    <input type="hidden" id="edit-slot-id">
-    <div class="form-group">
-      <label>إيميل الحساب</label>
-      <input type="text" id="edit-account-email" dir="ltr">
+    <div class="modal-header">
+      <span class="modal-title">تعديل بيانات الرابط</span>
+      <button class="modal-close" onclick="closeModal('edit-slot-modal')">✕</button>
     </div>
-    <div class="form-group">
-      <label>باسورد الحساب</label>
-      <input type="text" id="edit-account-pass" dir="ltr">
-    </div>
-    <div id="edit-slot-err" class="error-msg"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('edit-slot-modal')">إلغاء</button>
-      <button class="btn btn-primary" onclick="saveSlotEdit()">حفظ</button>
+    <div class="modal-body">
+      <input type="hidden" id="edit-slot-id">
+      <div class="modal-err" id="edit-slot-err"></div>
+      <div class="modal-field">
+        <label>بريد الحساب</label>
+        <input type="email" id="edit-account-email" placeholder="account@example.com" dir="ltr">
+      </div>
+      <div class="modal-field">
+        <label>كلمة مرور الحساب</label>
+        <input type="password" id="edit-account-pass" placeholder="••••••••" dir="ltr">
+      </div>
+      <button class="btn-primary" style="margin-top:4px;" onclick="saveSlotEdit()">حفظ التغييرات</button>
     </div>
   </div>
 </div>
 
-
-<!-- ── Toast ── -->
+<!-- Toast -->
 <div id="toast"></div>
 
 <script>
@@ -623,287 +1187,239 @@ const API = window.MR10X_API || 'https://mr10x-otp-production.up.railway.app';
 let TOKEN = localStorage.getItem('mr10x_token');
 let isRegister = false;
 let pendingVerifyId = null;
-let pendingFormData = null; // بيانات التسجيل لإعادة الإرسال
+let pendingFormData = null;
 let resendCountdownTimer = null;
-let isSubmitting = false; // منع الإرسال المزدوج
+let isSubmitting = false;
 
 function toast(msg, duration = 2500) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
 }
 
 function selectPlan(val) {
-  ['plan1','plan2','plan3'].forEach(p => {
-    const card = document.getElementById('plan-card-' + p.slice(-1));
-    if (card) card.classList.toggle('selected', p === val);
+  document.querySelectorAll('.plan-opt').forEach(opt => {
+    const radio = opt.querySelector('input[type="radio"]');
+    if (radio && radio.value === val) {
+      opt.classList.add('selected');
+      radio.checked = true;
+    } else {
+      opt.classList.remove('selected');
+    }
   });
-  const radio = document.querySelector(`input[name="reg-plan"][value="${val}"]`);
-  if (radio) radio.checked = true;
 }
 
 function getSelectedPlan() {
-  const r = document.querySelector('input[name="reg-plan"]:checked');
-  return r ? r.value : 'plan2';
+  const r = document.querySelector('.plan-opt input[type="radio"]:checked');
+  return r ? r.value : 'plan1';
 }
 
 function toggleAuthMode() {
   isRegister = !isRegister;
-  document.getElementById('auth-title').textContent = isRegister ? 'إنشاء حساب' : 'تسجيل الدخول';
-  document.getElementById('auth-sub').textContent = isRegister ? 'أنشئ حسابك وابدأ تسليم الأكواد تلقائياً' : 'إدارة صناديق الإيميل وأكواد التحقق تلقائياً';
-  document.getElementById('register-name-group').style.display = isRegister ? 'block' : 'none';
-  document.getElementById('register-phone-group').style.display = isRegister ? 'block' : 'none';
-  document.getElementById('register-plan-group').style.display = isRegister ? 'block' : 'none';
-  document.getElementById('auth-submit-btn').textContent = isRegister ? 'أرسل الطلب' : 'دخول';
-  document.getElementById('auth-switch-text').textContent = isRegister ? 'عندك حساب؟' : 'ما عندك حساب؟';
-  document.getElementById('auth-switch-btn').textContent = isRegister ? 'سجّل دخولك' : 'سجّل الحين';
-  document.getElementById('forgot-link').style.display = isRegister ? 'none' : 'block';
-  // إخفاء رسالة الانتظار لو كانت ظاهرة
-  document.getElementById('pending-box').style.display = 'none';
-  document.getElementById('auth-form-content').style.display = 'block';
+  document.getElementById('auth-title').textContent = isRegister ? 'إنشاء حساب جديد' : 'تسجيل الدخول';
+  document.getElementById('auth-sub').textContent = isRegister
+    ? 'سجّل الآن واحصل على خدمة OTP لمتجرك'
+    : 'مرحباً بك مجدداً — أدخل بياناتك للمتابعة';
+  document.getElementById('submit-btn').textContent = isRegister ? 'إنشاء الحساب' : 'دخول';
+  document.getElementById('toggle-text').textContent = isRegister ? 'لديك حساب بالفعل؟' : 'ليس لديك حساب؟';
+  document.getElementById('toggle-link').textContent = isRegister ? 'سجّل دخولك' : 'سجّل الآن';
+  document.getElementById('plan-selector').style.display = isRegister ? 'block' : 'none';
+  document.getElementById('name-field').style.display = isRegister ? 'block' : 'none';
+  document.getElementById('confirm-field').style.display = isRegister ? 'block' : 'none';
+  document.getElementById('auth-err').style.display = 'none';
 }
 
 async function submitAuth() {
-  if (isSubmitting) return; // منع الضغط المزدوج
-  isSubmitting = true;
-
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
-  const name = document.getElementById('auth-name').value.trim();
-  const phone = document.getElementById('auth-phone')?.value?.trim() || '';
+  if (isSubmitting) return;
   const errEl = document.getElementById('auth-err');
   errEl.style.display = 'none';
 
-  const plan_type = getSelectedPlan();
-  const endpoint = isRegister ? '/api/register' : '/api/login';
-  const body = isRegister ? { name, email, password, phone, plan_type } : { email, password };
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
 
-  try {
-    const r = await fetch(API + endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const data = await r.json();
-
-    // ── كود التحقق مطلوب ──
-    if (data.verify) {
-      pendingVerifyId = data.verifyId;
-      pendingFormData = { name, email, password, phone, plan_type }; // حفظ البيانات لإعادة الإرسال
-      document.getElementById('auth-form-content').style.display = 'none';
-      document.getElementById('verify-box').style.display = 'block';
-      document.getElementById('verify-code-input').focus();
-      startResendCountdown();
-      return;
-    }
-
-    // ── حالة الانتظار بعد التسجيل ──
-    if (data.pending) {
-      document.getElementById('auth-form-content').style.display = 'none';
-      document.getElementById('pending-box').style.display = 'block';
-      setPendingWaLink();
-      return;
-    }
-
-    // ── حساب قيد المراجعة عند محاولة الدخول ──
-    if (!r.ok && data.error === 'pending') {
-      document.getElementById('auth-form-content').style.display = 'none';
-      document.getElementById('pending-box').style.display = 'block';
-      setPendingWaLink();
-      return;
-    }
-
-    if (!r.ok) {
-      errEl.textContent = data.error === 'Invalid credentials' ? 'البريد أو كلمة المرور غير صحيحة' : (data.error || 'حدث خطأ');
-      errEl.style.display = 'block';
-      return;
-    }
-
-    TOKEN = data.token;
-    localStorage.setItem('mr10x_token', TOKEN);
-    localStorage.setItem('mr10x_name', data.name || '');
-    showDashboard(data.name);
-    loadAll();
-  } catch(e) {
-    errEl.textContent = 'تعذر الاتصال بالسيرفر';
+  if (!email || !password) {
+    errEl.textContent = 'يرجى إدخال البريد وكلمة المرور';
     errEl.style.display = 'block';
-  } finally {
-    isSubmitting = false; // دايمًا نفتح الباب بعد ما ينتهي الطلب
+    return;
+  }
+
+  if (isRegister) {
+    const name = document.getElementById('name').value.trim();
+    const confirm = document.getElementById('confirm-password').value;
+    const plan = getSelectedPlan();
+
+    if (!name) { errEl.textContent = 'يرجى إدخال الاسم'; errEl.style.display = 'block'; return; }
+    if (password !== confirm) { errEl.textContent = 'كلمتا المرور غير متطابقتين'; errEl.style.display = 'block'; return; }
+
+    isSubmitting = true;
+    document.getElementById('submit-btn').disabled = true;
+    try {
+      const r = await fetch(API + '/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, plan })
+      });
+      const data = await r.json();
+      if (!r.ok) { errEl.textContent = data.error || 'فشل التسجيل'; errEl.style.display = 'block'; return; }
+
+      pendingVerifyId = data.userId;
+      pendingFormData = { email, password };
+      document.getElementById('auth-body').style.display = 'none';
+      document.getElementById('verify-box').style.display = 'block';
+      document.getElementById('auth-form-content').style.display = 'none';
+      document.getElementById('verify-email-label').textContent = email;
+      setPendingWaLink();
+      startResendCountdown(60);
+    } finally {
+      isSubmitting = false;
+      document.getElementById('submit-btn').disabled = false;
+    }
+
+  } else {
+    isSubmitting = true;
+    document.getElementById('submit-btn').disabled = true;
+    try {
+      const r = await fetch(API + '/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await r.json();
+      if (!r.ok) { errEl.textContent = data.error || 'بيانات خاطئة'; errEl.style.display = 'block'; return; }
+      TOKEN = data.token;
+      localStorage.setItem('mr10x_token', TOKEN);
+      localStorage.setItem('mr10x_name', data.name || '');
+      showDashboard(data.name);
+      loadAll();
+    } finally {
+      isSubmitting = false;
+      document.getElementById('submit-btn').disabled = false;
+    }
   }
 }
 
 function setPendingWaLink() {
-  const name  = (document.getElementById('auth-name')?.value  || '').trim();
-  const email = (document.getElementById('auth-email')?.value || '').trim();
-  const phone = (document.getElementById('auth-phone')?.value || '').trim();
-  const parts = [];
-  if (name)  parts.push(`الاسم: ${name}`);
-  if (email) parts.push(`الإيميل: ${email}`);
-  if (phone) parts.push(`رقم الجوال: ${phone}`);
-  const info = parts.length ? `\n${parts.join('\n')}` : '';
-  const msg = encodeURIComponent(`السلام عليكم،\nسجلت متجري في Mr10x وأحتاج مساعدة في تفعيل الحساب.${info}`);
-  const link = document.getElementById('pending-wa-link');
-  if (link) link.href = `https://wa.me/966580198626?text=${msg}`;
+  const container = document.getElementById('wa-link-container');
+  if (!container) return;
+  const phone = '966580198626';
+  const msg = encodeURIComponent('مرحباً، أحتاج مساعدة في تفعيل حسابي في MR10X');
+  container.innerHTML = `<a class="wa-link" href="https://wa.me/${phone}?text=${msg}" target="_blank">📞 تواصل مع الدعم عبر واتساب</a>`;
 }
 
 async function confirmVerify() {
-  if (isSubmitting) return; // منع الضغط المزدوج على زر التأكيد
-  isSubmitting = true;
-
-  const code = document.getElementById('verify-code-input').value.trim();
+  const code = document.getElementById('verify-code').value.trim();
   const errEl = document.getElementById('verify-err');
   errEl.style.display = 'none';
-  if (!code || !pendingVerifyId) { isSubmitting = false; return; }
+  if (!code) { errEl.textContent = 'أدخل الرمز'; errEl.style.display = 'block'; return; }
 
-  try {
-    const r = await fetch(API + '/api/verify-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ verifyId: pendingVerifyId, code })
-    });
-    const data = await r.json();
+  const r = await fetch(API + '/api/verify-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: pendingVerifyId, code })
+  });
+  const data = await r.json();
+  if (!r.ok) { errEl.textContent = data.error || 'رمز خاطئ'; errEl.style.display = 'block'; return; }
 
-    if (data.pending) {
-      document.getElementById('verify-box').style.display = 'none';
-      document.getElementById('pending-box').style.display = 'block';
-      setPendingWaLink();
-      return;
-    }
-
-    if (!r.ok) {
-      errEl.textContent = data.error || 'الكود غير صحيح';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    document.getElementById('verify-box').style.display = 'none';
-    document.getElementById('pending-box').style.display = 'block';
-    setPendingWaLink();
-  } catch(e) {
-    errEl.textContent = 'تعذر الاتصال بالسيرفر';
-    errEl.style.display = 'block';
-  } finally {
-    isSubmitting = false;
-  }
+  TOKEN = data.token;
+  localStorage.setItem('mr10x_token', TOKEN);
+  localStorage.setItem('mr10x_name', data.name || '');
+  if (resendCountdownTimer) clearInterval(resendCountdownTimer);
+  showDashboard(data.name);
+  loadAll();
 }
 
 function backToRegister() {
-  pendingVerifyId = null;
-  pendingFormData = null;
-  isSubmitting = false; // reset في حالة رجع للنموذج
-  clearInterval(resendCountdownTimer);
   document.getElementById('verify-box').style.display = 'none';
-  document.getElementById('verify-code-input').value = '';
-  document.getElementById('verify-err').style.display = 'none';
+  document.getElementById('auth-body').style.display = 'block';
   document.getElementById('auth-form-content').style.display = 'block';
+  if (resendCountdownTimer) clearInterval(resendCountdownTimer);
 }
 
 function startResendCountdown(seconds = 60) {
-  clearInterval(resendCountdownTimer);
   const btn = document.getElementById('resend-btn');
-  const timerEl = document.getElementById('resend-timer');
-  const textEl = document.getElementById('resend-text');
-
-  let remaining = seconds;
+  if (!btn) return;
   btn.disabled = true;
-  btn.style.cursor = 'not-allowed';
-  btn.style.color = 'var(--muted)';
-  btn.style.borderColor = 'var(--border)';
-  timerEl.textContent = remaining;
-  textEl.innerHTML = `إعادة إرسال الكود خلال <span id="resend-timer">${remaining}</span> ثانية`;
-
+  btn.style.color = 'var(--accent2)';
+  btn.style.borderColor = 'rgba(245,159,11,0.4)';
+  let remaining = seconds;
+  btn.textContent = `إعادة الإرسال بعد ${remaining}ث`;
   resendCountdownTimer = setInterval(() => {
     remaining--;
-    const t = document.getElementById('resend-timer');
-    if (t) t.textContent = remaining;
-
     if (remaining <= 0) {
       clearInterval(resendCountdownTimer);
       btn.disabled = false;
-      btn.style.cursor = 'pointer';
-      btn.style.color = 'var(--accent2)';
-      btn.style.borderColor = 'rgba(168,85,247,0.4)';
-      document.getElementById('resend-text').textContent = 'إعادة إرسال الكود';
+      btn.textContent = 'إعادة إرسال الرمز';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    } else {
+      btn.textContent = `إعادة الإرسال بعد ${remaining}ث`;
     }
   }, 1000);
 }
 
 async function resendCode() {
-  if (!pendingFormData) return;
-  const btn = document.getElementById('resend-btn');
-  const errEl = document.getElementById('verify-err');
-  errEl.style.display = 'none';
-
-  btn.disabled = true;
-  btn.style.cursor = 'not-allowed';
-  document.getElementById('resend-text').textContent = 'جاري الإرسال...';
-
-  try {
-    const r = await fetch(API + '/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(pendingFormData)
-    });
+  if (!pendingVerifyId) return;
+  const r = await fetch(API + '/api/resend-verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: pendingVerifyId })
+  });
+  if (r.ok) {
+    toast('تم إرسال الرمز مجدداً ✓');
+    startResendCountdown(60);
+  } else {
     const data = await r.json();
-
-    if (data.verify) {
-      pendingVerifyId = data.verifyId;
-      document.getElementById('verify-code-input').value = '';
-      document.getElementById('verify-code-input').focus();
-      // إظهار رسالة نجاح واضحة حتى يعرف المستخدم أن الكود الجديد في بريده
-      errEl.style.color = 'var(--green)';
-      errEl.textContent = '✅ تم إرسال كود جديد — افحص بريدك وأدخل الكود الجديد';
-      errEl.style.display = 'block';
-      toast('✅ تم إرسال كود جديد إلى بريدك');
-      startResendCountdown();
-      return;
-    }
-
-    // إذا رجع خطأ
-    errEl.style.color = '';
-    errEl.textContent = data.error || 'تعذر إعادة الإرسال';
-    errEl.style.display = 'block';
-    startResendCountdown(30); // إعادة عداد أقصر عند الخطأ
-  } catch(e) {
-    errEl.style.color = '';
-    errEl.textContent = 'تعذر الاتصال بالسيرفر';
-    errEl.style.display = 'block';
-    startResendCountdown(30);
+    toast(data.error || 'فشل الإرسال');
   }
 }
 
 function logout() {
   localStorage.removeItem('mr10x_token');
+  localStorage.removeItem('mr10x_name');
   TOKEN = null;
-  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('dashboard-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('auth-body').style.display = 'block';
+  document.getElementById('verify-box').style.display = 'none';
+  document.getElementById('auth-form-content').style.display = 'block';
+  document.getElementById('email').value = '';
+  document.getElementById('password').value = '';
+  document.getElementById('auth-err').style.display = 'none';
+  if (isRegister) toggleAuthMode();
 }
 
 function showDashboard(name) {
   document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  document.getElementById('dash-name').textContent = name ? `— ${name}` : '';
-  document.getElementById('seller-name').textContent = name || '';
-  document.getElementById('seller-name').style.display = 'inline';
-  document.getElementById('logout-btn').style.display = 'inline-flex';
+  document.getElementById('dashboard-screen').style.display = 'block';
+  document.getElementById('topbar-username').textContent = name || 'بائع';
+  const initials = (name || 'ب').charAt(0);
+  document.getElementById('user-avatar-initials').textContent = initials;
 }
 
 function switchTab(name, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
 }
 
 async function apiFetch(path, opts = {}) {
   return fetch(API + path, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN, ...(opts.headers || {}) }
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + TOKEN,
+      ...(opts.headers || {})
+    }
   });
 }
 
@@ -911,227 +1427,147 @@ async function loadAll() {
   await Promise.all([loadMailboxes(), loadSlots(), loadProfile()]);
 }
 
-// رقم واتساب صاحب الموقع للتجديد
-const RENEWAL_WHATSAPP = '966580198626'; // رقم الواتساب للتجديد
+const RENEWAL_WHATSAPP = '966580198626';
 
 async function loadProfile() {
-  try {
-    const r = await apiFetch('/api/me');
-    if (!r.ok) return;
-    const data = await r.json();
-    const card = document.getElementById('stat-sub-card');
-    const numEl = document.getElementById('stat-sub');
-    const banner = document.getElementById('sub-warning-banner');
+  const r = await apiFetch('/api/me');
+  if (!r.ok) return;
+  const me = await r.json();
 
-    if (!data.subscription_expires_at) {
-      numEl.textContent = '—';
-      card.style.borderColor = '';
-      return;
-    }
+  const days = me.subscription_days_left ?? 0;
+  const numEl = document.getElementById('days-num');
+  const dotEl = document.getElementById('sub-dot');
+  const planEl = document.getElementById('plan-badge');
 
-    const now = Math.floor(Date.now() / 1000);
-    const daysLeft = Math.ceil((data.subscription_expires_at - now) / 86400);
+  if (days > 7) {
+    numEl.textContent = `${days} يوم متبقٍ`;
+    numEl.className = '';
+    dotEl.className = 'sub-dot';
+  } else if (days > 0) {
+    numEl.textContent = `${days} يوم متبقٍ`;
+    numEl.className = 'warning';
+    dotEl.className = 'sub-dot warning';
+  } else {
+    numEl.textContent = 'منتهي الصلاحية';
+    numEl.className = 'expired';
+    dotEl.className = 'sub-dot expired';
+  }
 
-    if (daysLeft <= 0) {
-      numEl.textContent = 'منتهي';
-      numEl.style.color = 'var(--red, #ef4444)';
-      card.style.borderColor = 'rgba(239,68,68,0.4)';
+  const planNames = { plan1: 'أساسية', plan2: 'احترافية', plan3: 'متقدمة' };
+  planEl.textContent = planNames[me.plan] || me.plan || '';
 
-      // بانر منتهي
-      document.getElementById('warn-days-text').textContent = 'انتهى اشتراكك!';
-      banner.querySelector('.warn-text').innerHTML =
-        '<strong>انتهى اشتراكك</strong> — لن تصل الأكواد لزبائنك حتى يتم التجديد.';
-      const waMsg = encodeURIComponent('السلام عليكم، أريد تجديد اشتراكي في Mr10x.');
-      document.getElementById('warn-wa-link').href = `https://wa.me/${RENEWAL_WHATSAPP}?text=${waMsg}`;
-      banner.classList.add('show');
-      banner.style.borderColor = 'rgba(239,68,68,0.45)';
-      banner.style.background = 'rgba(239,68,68,0.1)';
-      banner.style.color = '#fca5a5';
-      banner.querySelector('.warn-text strong').style.color = '#f87171';
-
-    } else if (daysLeft <= 5) {
-      numEl.textContent = daysLeft;
-      numEl.style.color = '#f59e0b';
-      card.style.borderColor = 'rgba(245,158,11,0.4)';
-
-      // بانر تحذيري ≤5 أيام
-      const daysWord = daysLeft === 1 ? 'يوم واحد فقط' : `${daysLeft} أيام`;
-      document.getElementById('warn-days-text').textContent = `باقي لك ${daysWord}`;
-      const waMsg = encodeURIComponent(`السلام عليكم، اشتراكي في Mr10x سينتهي خلال ${daysLeft} أيام، أريد التجديد.`);
-      document.getElementById('warn-wa-link').href = `https://wa.me/${RENEWAL_WHATSAPP}?text=${waMsg}`;
-      banner.classList.add('show');
-
-    } else if (daysLeft <= 7) {
-      numEl.textContent = daysLeft;
-      numEl.style.color = '#f59e0b';
-      card.style.borderColor = 'rgba(245,158,11,0.4)';
-    } else {
-      numEl.textContent = daysLeft;
-      numEl.style.color = 'var(--accent2)';
-      card.style.borderColor = '';
-    }
-  } catch {}
+  const msg = encodeURIComponent(`مرحباً، أريد تجديد اشتراكي في MR10X - ${me.name || ''}`);
+  document.getElementById('renew-wa-link').href = `https://wa.me/${RENEWAL_WHATSAPP}?text=${msg}`;
 }
 
 let mailboxCache = [];
+
 async function loadMailboxes() {
   const r = await apiFetch('/api/mailboxes');
-  const data = await r.json();
-  mailboxCache = data;
-  document.getElementById('stat-mailboxes').textContent = data.length;
+  if (!r.ok) return;
+  const list = await r.json();
+  mailboxCache = list;
 
-  const list = document.getElementById('mailboxes-list');
-  if (!data.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>لا توجد صناديق إيميل مضافة بعد</div>';
+  const countEl = document.getElementById('mailboxes-count');
+  countEl.textContent = list.length ? `${list.length} صندوق` : '';
+
+  const container = document.getElementById('mailboxes-list');
+  if (!list.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">لا توجد صناديق بريد</div>
+        <div class="empty-sub">أضف صندوق بريد لبدء استقبال رموز OTP</div>
+      </div>`;
     return;
   }
-  const baseUrl = location.origin;
-  list.innerHTML = data.map(mb => {
-    const webhookUrl = mb.webhook_token ? `${baseUrl}/api/inbound/${mb.webhook_token}` : '';
-    const isActive = mb.status === 'active';
-    const isError  = mb.status === 'error';
-    const lastSync = mb.last_sync ? new Date(mb.last_sync * 1000).toLocaleString('ar-SA') : null;
-    const gmailConnected = mb.gmail_connected === 1;
 
-    // Status badge
-    let statusBadge;
-    if (gmailConnected && isActive) {
-      statusBadge = `<span class="badge badge-green">نشط</span>`;
-    } else if (isError) {
-      statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3)">خطأ</span>`;
-    } else if (gmailConnected) {
-      statusBadge = `<span class="badge badge-yellow">ينتظر</span>`;
-    } else {
-      statusBadge = `<span class="badge badge-yellow">غير مفعّل</span>`;
-    }
-
-    // Gmail section
-    let gmailSection;
-    if (gmailConnected) {
-      gmailSection = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:10px 12px;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.25);border-radius:10px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6ZM20 6L12 11L4 6H20ZM20 18H4V8L12 13L20 8V18Z" fill="#22c55e"/></svg>
-          <div>
-            <div style="font-size:13px;font-weight:600;color:#22c55e">✓ Gmail متصل</div>
-            <div style="font-size:11px;color:var(--muted)" dir="ltr">${escapeHtml(mb.gmail_email || '')}</div>
-          </div>
-        </div>
-        <button class="btn btn-sm" onclick="disconnectGmail('${mb.id}')"
-          style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.25);font-size:12px">
-          فصل Gmail
-        </button>
-      </div>`;
-    } else {
-      gmailSection = `
-      <button class="btn btn-sm" onclick="connectGmail('${mb.id}')"
-        style="width:100%;padding:10px;background:linear-gradient(135deg,rgba(66,133,244,0.15),rgba(52,168,83,0.15));border:1px solid rgba(66,133,244,0.35);border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6ZM20 6L12 11L4 6H20ZM20 18H4V8L12 13L20 8V18Z" fill="#4285f4"/></svg>
-        ربط Gmail — استقبال أوتوماتيك
-      </button>`;
-    }
-
-    // Webhook (secondary/collapsed)
-    let webhookSection = '';
-    if (webhookUrl && !gmailConnected) {
-      webhookSection = `
-      <details style="margin-top:2px">
-        <summary style="font-size:12px;color:var(--muted);cursor:pointer;user-select:none">🔗 استخدام Webhook بدلاً من Gmail</summary>
-        <div style="margin-top:8px">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">أضف هذا الرابط في Gmail → إعدادات → إعادة توجيه:</div>
-          <div class="token-box" onclick="copyWebhook('${escapeHtml(webhookUrl)}')" style="cursor:pointer">
-            <span style="font-size:11px;word-break:break-all" dir="ltr">${escapeHtml(webhookUrl)}</span>
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </div>
-        </div>
-      </details>`;
-    }
-
+  container.innerHTML = list.map(mb => {
+    const isConnected = !!mb.gmail_connected;
+    const badge = isConnected
+      ? `<span class="badge badge-green">Gmail متصل</span>`
+      : `<span class="badge badge-muted">غير متصل</span>`;
+    const connectBtn = isConnected
+      ? `<button class="btn-sm danger" onclick="disconnectGmail(${mb.id})">قطع الاتصال</button>`
+      : `<button class="btn-sm accent" onclick="connectGmail(${mb.id})">ربط Gmail</button>`;
     return `
-    <div class="item-card" id="mb-card-${mb.id}" style="flex-direction:column;align-items:stretch;gap:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div class="info" style="flex:1">
-          <div class="title">${escapeHtml(mb.email)}</div>
-          <div class="meta">${mb.label ? escapeHtml(mb.label) + ' · ' : ''}${lastSync ? 'آخر إيميل: ' + lastSync : 'لم يصل إيميل بعد'}</div>
-          ${isError && mb.last_error ? `<div style="font-size:11px;color:#ef4444;margin-top:3px">⚠️ ${escapeHtml(mb.last_error)}</div>` : ''}
+      <div class="card">
+        <div class="card-row">
+          <div class="card-left">
+            <div class="card-icon">📧</div>
+            <div class="card-info">
+              <div class="card-name">${escapeHtml(mb.label || mb.email)}</div>
+              <div class="card-meta">${escapeHtml(mb.email)}</div>
+            </div>
+          </div>
+          <div class="card-actions">
+            ${badge}
+            ${connectBtn}
+            <button class="btn-sm danger" onclick="deleteMailbox(${mb.id})">حذف</button>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          ${statusBadge}
-          <button class="btn btn-danger btn-sm" onclick="deleteMailbox('${mb.id}')">حذف</button>
-        </div>
-      </div>
-      ${gmailSection}
-      ${webhookSection}
-    </div>`;
+      </div>`;
   }).join('');
 }
 
 async function connectGmail(mailboxId) {
-  try {
-    const r = await apiFetch(`/api/auth/gmail/start?mailbox_id=${encodeURIComponent(mailboxId)}`);
-    const data = await r.json();
-    if (!r.ok) { toast(data.error || 'تعذّر بدء ربط Gmail'); return; }
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      toast('تعذّر بدء ربط Gmail');
-    }
-  } catch(e) {
-    toast('تعذّر الاتصال بالسيرفر');
-  }
+  const r = await apiFetch('/api/auth/gmail/start?mailbox_id=' + mailboxId);
+  if (!r.ok) { toast('فشل بدء ربط Gmail'); return; }
+  const data = await r.json();
+  if (data.url) window.location.href = data.url;
 }
 
 async function disconnectGmail(mailboxId) {
-  if (!confirm('هل تريد فصل Gmail عن هذا الصندوق؟')) return;
-  try {
-    const r = await apiFetch(`/api/mailboxes/${mailboxId}/gmail-disconnect`, { method: 'POST' });
-    if (r.ok) {
-      toast('تم فصل Gmail ✓');
-      loadMailboxes();
-    } else {
-      const d = await r.json().catch(() => ({}));
-      toast(d.error || 'تعذّر الفصل');
-    }
-  } catch(e) {
-    toast('تعذّر الاتصال بالسيرفر');
-  }
+  if (!confirm('قطع اتصال Gmail لهذا الصندوق؟')) return;
+  const r = await apiFetch('/api/mailboxes/' + mailboxId + '/gmail-disconnect', { method: 'POST' });
+  if (r.ok) { toast('تم قطع الاتصال'); loadMailboxes(); }
+  else toast('فشل قطع الاتصال');
 }
 
 async function loadSlots() {
   const r = await apiFetch('/api/slots');
-  const data = await r.json();
-  document.getElementById('stat-slots').textContent = data.length;
-  document.getElementById('stat-codes').textContent = data.filter(s => s.latest_code).length;
+  if (!r.ok) return;
+  const list = await r.json();
 
-  const list = document.getElementById('slots-list');
-  if (!data.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-icon">🔗</div>لا توجد روابط زبائن بعد</div>';
+  const countEl = document.getElementById('slots-count');
+  countEl.textContent = list.length ? `${list.length} رابط` : '';
+
+  const container = document.getElementById('slots-list');
+  if (!list.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔗</div>
+        <div class="empty-title">لا توجد روابط</div>
+        <div class="empty-sub">أضف رابطاً لزبون لبدء إرسال الرموز</div>
+      </div>`;
     return;
   }
-  list.innerHTML = data.map(s => {
-    const link = `${location.origin}/code.html?t=${s.token}`;
-    const hasAccount = s.account_email;
+
+  container.innerHTML = list.map(sl => {
+    const slotUrl = sl.url || (window.location.origin + '/code.html?t=' + sl.token);
+    const editBtn = `<button class="btn-sm" style="border-color:rgba(245,159,11,0.3);color:var(--accent);"
+      onclick="openEditSlot(${sl.id},'${escapeHtml(sl.account_email||'')}','')">تعديل</button>`;
     return `
-    <div class="item-card" style="flex-wrap:wrap;gap:10px">
-      <div class="info" style="width:100%">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-          <div>
-            <div class="title">${escapeHtml(s.label)}</div>
-            <div class="meta">${escapeHtml(s.mailbox_email)}</div>
+      <div class="card">
+        <div class="card-row">
+          <div class="card-left">
+            <div class="card-icon">🔗</div>
+            <div class="card-info">
+              <div class="card-name">${escapeHtml(sl.label || 'رابط')}</div>
+              <div class="card-meta">${escapeHtml(sl.account_email || '')}</div>
+            </div>
           </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            ${s.latest_code ? `<span class="badge badge-green">كود: ${escapeHtml(s.latest_code)}</span>` : '<span class="badge badge-yellow">ينتظر كود</span>'}
-            <button class="btn btn-sm" style="background:rgba(124,58,237,0.15);color:var(--accent2);border:1px solid rgba(124,58,237,0.3)" onclick="openEditSlot('${s.id}','${escapeHtml(s.account_email||'')}','')">✏️ بيانات</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteSlot('${s.id}')">حذف</button>
+          <div class="card-actions">
+            ${editBtn}
+            <button class="btn-sm" onclick="copyLink('${escapeHtml(slotUrl)}')">نسخ الرابط</button>
+            <button class="btn-sm danger" onclick="deleteSlot(${sl.id})">حذف</button>
           </div>
         </div>
-        ${hasAccount ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">📧 ${escapeHtml(s.account_email)}</div>` : `<div style="font-size:12px;color:var(--red);margin-top:4px">⚠️ لم تُحدَّد بيانات الحساب بعد</div>`}
-        <div class="token-box" onclick="copyLink('${escapeHtml(link)}')" style="margin-top:8px">
-          <span>${escapeHtml(link)}</span>
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <div class="webhook-row">
+          <div class="webhook-url">${escapeHtml(slotUrl)}</div>
+          <button class="btn-sm" onclick="copyWebhook('${escapeHtml(slotUrl)}')">نسخ</button>
         </div>
-      </div>
-    </div>`;
+      </div>`;
   }).join('');
 }
 
@@ -1143,48 +1579,26 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function openAddMailbox() {
-  ['mb-email','mb-label'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('mb-email').value = '';
+  document.getElementById('mb-label').value = '';
   document.getElementById('mb-err').style.display = 'none';
   document.getElementById('mb-ok').style.display = 'none';
   openModal('add-mailbox-modal');
 }
 
+// Handle URL params on load
 document.addEventListener('DOMContentLoaded', () => {
-  const urlParams = new URLSearchParams(window.location.search);
-
-  // إذا جاء من landing.html بـ ?register=1 يفتح وضع التسجيل تلقائياً
-  if (urlParams.get('register') === '1' && !isRegister) {
-    toggleAuthMode();
-    window.scrollTo(0, 0);
-    setTimeout(() => {
-      const nameInput = document.getElementById('auth-name');
-      if (nameInput) nameInput.focus();
-    }, 100);
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('register') === '1') {
+    if (!isRegister) toggleAuthMode();
   }
-
-  // بعد رجوع OAuth من Google
-  if (urlParams.get('gmail_connected') === '1') {
-    // نظّف الـ URL بدون reload
-    history.replaceState({}, '', window.location.pathname);
-    // انتظر حتى تُحمَّل البيانات ثم أظهر toast
-    const checkReady = setInterval(() => {
-      if (typeof toast === 'function' && typeof loadMailboxes === 'function') {
-        clearInterval(checkReady);
-        toast('✓ تم ربط Gmail بنجاح — سيبدأ الاستقبال خلال دقيقة');
-        loadMailboxes();
-      }
-    }, 100);
+  if (params.get('gmail_connected') === '1') {
+    toast('تم ربط Gmail بنجاح ✓');
+    window.history.replaceState({}, '', window.location.pathname);
   }
-
-  if (urlParams.get('gmail_error')) {
-    history.replaceState({}, '', window.location.pathname);
-    const checkReady = setInterval(() => {
-      if (typeof toast === 'function') {
-        clearInterval(checkReady);
-        const msg = decodeURIComponent(urlParams.get('gmail_error'));
-        toast('❌ فشل ربط Gmail: ' + msg);
-      }
-    }, 100);
+  if (params.get('gmail_error')) {
+    toast('فشل ربط Gmail: ' + params.get('gmail_error'));
+    window.history.replaceState({}, '', window.location.pathname);
   }
 });
 
@@ -1193,9 +1607,10 @@ async function addMailbox() {
   const label = document.getElementById('mb-label').value.trim();
   const errEl = document.getElementById('mb-err');
   const okEl = document.getElementById('mb-ok');
-  errEl.style.display = 'none'; okEl.style.display = 'none';
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
 
-  if (!email) { errEl.textContent = 'البريد الإلكتروني مطلوب'; errEl.style.display = 'block'; return; }
+  if (!email) { errEl.textContent = 'البريد مطلوب'; errEl.style.display = 'block'; return; }
 
   try {
     const r = await apiFetch('/api/mailboxes', {
@@ -1238,7 +1653,6 @@ function openAddSlot() {
   document.getElementById('slot-account-pass').value = '';
   document.getElementById('slot-count').value = '1';
   document.getElementById('slot-err').style.display = 'none';
-  // auto-fill email from first mailbox
   autoFillSlotEmail();
   openModal('add-slot-modal');
 }
@@ -1315,9 +1729,8 @@ if (TOKEN) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
-    // إذا كان صندوق التحقق مرئياً، لا تستدعي submitAuth
     const verifyBoxVisible = document.getElementById('verify-box')?.style.display !== 'none';
-    if (verifyBoxVisible) return; // confirmVerify يُستدعى من onkeyup داخل الحقل
+    if (verifyBoxVisible) return;
     if (document.getElementById('auth-screen').style.display !== 'none') submitAuth();
   }
   if (e.key === 'Escape') {

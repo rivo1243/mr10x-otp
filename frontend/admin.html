@@ -8,14 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0d0d1a;
-    --surface: #13131f;
-    --surface2: #1a1a2e;
-    --border: rgba(124,58,237,0.18);
-    --accent: #7c3aed;
-    --accent2: #a855f7;
-    --text: #f1f0fb;
-    --muted: #8b87a8;
+    --bg: #0e0e12;
+    --surface: #17171d;
+    --surface2: #1f1f28;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(245,159,11,0.3);
+    --accent: #f59f0b;
+    --accent2: #fbbf24;
+    --text: #f4f3ef;
+    --muted: #8a8898;
     --success: #22c55e;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -25,6 +26,7 @@
     --active-border: rgba(34,197,94,0.3);
     --rejected-bg: rgba(239,68,68,0.1);
     --rejected-border: rgba(239,68,68,0.3);
+    --radius: 14px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -35,6 +37,36 @@
     direction: rtl;
   }
 
+  /* ── Logo Mark ── */
+  .logo-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-mark .mark {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0e0e12;
+    flex-shrink: 0;
+  }
+  .logo-mark .wordmark {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+  .logo-mark .wordmark span {
+    color: var(--accent);
+  }
+
   /* ── Login Screen ── */
   #login-screen {
     display: flex;
@@ -42,6 +74,7 @@
     justify-content: center;
     min-height: 100vh;
     padding: 24px;
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(245,159,11,0.06) 0%, transparent 70%);
   }
   .login-card {
     background: var(--surface);
@@ -53,19 +86,49 @@
     text-align: center;
   }
   .login-card .logo {
-    font-size: 36px;
-    font-weight: 800;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     margin-bottom: 8px;
   }
+  .login-card .logo .mark {
+    width: 44px;
+    height: 44px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    color: #0e0e12;
+  }
+  .login-card .logo .text {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .login-card .logo .text span { color: var(--accent); }
   .login-card h2 {
-    font-size: 18px;
+    font-size: 15px;
     color: var(--muted);
     font-weight: 500;
     margin-bottom: 32px;
+  }
+  .admin-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: #f87171;
+    font-weight: 600;
+    margin-bottom: 24px;
   }
   .form-group {
     margin-bottom: 16px;
@@ -92,6 +155,7 @@
   .form-group input:focus {
     outline: none;
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245,159,11,0.08);
   }
   .btn {
     display: inline-flex;
@@ -108,10 +172,10 @@
     transition: all 0.2s;
   }
   .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: white;
+    background: var(--accent);
+    color: #0e0e12;
   }
-  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
   .btn-success {
     background: rgba(34,197,94,0.15);
     color: var(--success);
@@ -141,6 +205,10 @@
     font-size: 13px;
     margin-top: 10px;
     display: none;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
   }
 
   /* ── Dashboard ── */
@@ -157,13 +225,10 @@
     top: 0;
     z-index: 100;
   }
-  .topbar-logo {
-    font-size: 22px;
-    font-weight: 800;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
   }
   .topbar-badge {
     font-size: 11px;
@@ -171,8 +236,13 @@
     color: var(--danger);
     border: 1px solid rgba(239,68,68,0.3);
     border-radius: 20px;
-    padding: 2px 10px;
-    font-weight: 600;
+    padding: 3px 10px;
+    font-weight: 700;
+    animation: pulse-badge 2s ease-in-out infinite;
+  }
+  @keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.65; }
   }
   .topbar-actions {
     display: flex;
@@ -180,8 +250,13 @@
     gap: 12px;
   }
   .admin-label {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--muted);
+    background: rgba(245,159,11,0.08);
+    border: 1px solid rgba(245,159,11,0.15);
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-weight: 600;
   }
 
   /* ── Stats Bar ── */
@@ -190,21 +265,24 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     padding: 24px;
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
   }
   .stat-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: var(--radius);
     padding: 20px;
     text-align: center;
+    transition: border-color 0.2s;
   }
+  .stat-card:hover { border-color: rgba(245,159,11,0.2); }
   .stat-card .num {
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 800;
     line-height: 1;
     margin-bottom: 6px;
+    letter-spacing: -1px;
   }
   .stat-card .lbl {
     font-size: 13px;
@@ -213,46 +291,47 @@
   .stat-pending .num { color: var(--warning); }
   .stat-active .num { color: var(--success); }
   .stat-rejected .num { color: var(--danger); }
-  .stat-total .num { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .stat-total .num { color: var(--accent); }
 
   /* ── Tabs ── */
   .tabs-container {
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 24px 24px;
   }
   .tabs {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 20px;
   }
   .tab-btn {
-    padding: 10px 20px;
+    padding: 11px 20px;
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
     color: var(--muted);
     font-family: 'Tajawal', sans-serif;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
     margin-bottom: -1px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
+    white-space: nowrap;
   }
   .tab-btn.active {
-    color: var(--accent2);
-    border-bottom-color: var(--accent2);
-    font-weight: 600;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 700;
   }
   .tab-btn:hover:not(.active) { color: var(--text); }
   .tab-badge {
     font-size: 11px;
-    background: rgba(245,158,11,0.2);
-    color: var(--warning);
+    background: rgba(239,68,68,0.2);
+    color: var(--danger);
     border-radius: 20px;
     padding: 1px 7px;
     font-weight: 700;
@@ -263,7 +342,7 @@
   /* ── Sellers Table ── */
   .table-wrap {
     overflow-x: auto;
-    border-radius: 14px;
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     background: var(--surface);
   }
@@ -274,20 +353,20 @@
   thead th {
     padding: 14px 16px;
     text-align: right;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--muted);
-    font-weight: 600;
-    text-transform: uppercase;
+    font-weight: 700;
     letter-spacing: 0.5px;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
+    text-transform: uppercase;
   }
   tbody tr {
-    border-bottom: 1px solid rgba(124,58,237,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
     transition: background 0.15s;
   }
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: rgba(124,58,237,0.04); }
+  tbody tr:hover { background: rgba(245,159,11,0.03); }
   tbody td {
     padding: 14px 16px;
     font-size: 14px;
@@ -344,16 +423,17 @@
     left: 50%;
     transform: translateX(-50%) translateY(80px);
     background: var(--surface2);
-    border: 1px solid var(--border);
+    border: 1px solid rgba(245,159,11,0.2);
     color: var(--text);
     padding: 12px 24px;
     border-radius: 12px;
     font-size: 14px;
     font-weight: 500;
     opacity: 0;
-    transition: all 0.3s;
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
     z-index: 999;
     white-space: nowrap;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
@@ -401,25 +481,26 @@
     font-size: 12px;
     cursor: pointer;
     color-scheme: dark;
+    transition: border-color 0.15s;
   }
   .sub-date-input:focus { outline: none; border-color: var(--accent); }
-  .sub-info { font-size: 11px; color: var(--muted); }
+  .sub-info { font-size: 11px; color: var(--muted); margin-top: 4px; display: block; }
   .sub-info.expiring { color: var(--warning); }
   .sub-info.expired { color: var(--danger); }
   .sub-info.ok { color: var(--success); }
   .btn-sub {
-    background: rgba(124,58,237,0.15);
-    color: var(--accent2);
-    border: 1px solid rgba(124,58,237,0.3);
+    background: rgba(245,159,11,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(245,159,11,0.25);
     padding: 5px 10px;
     font-size: 12px;
     border-radius: 8px;
     font-family: 'Tajawal', sans-serif;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: background 0.15s;
   }
-  .btn-sub:hover { background: rgba(124,58,237,0.28); }
+  .btn-sub:hover { background: rgba(245,159,11,0.22); }
 
   /* ── Plan Select ── */
   .plan-select {
@@ -428,8 +509,10 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--text);
+    font-family: 'Tajawal', sans-serif;
     font-size: 12px;
     cursor: pointer;
+    transition: border-color 0.15s;
   }
   .plan-select:focus { outline: none; border-color: var(--accent); }
   .plan-badge {
@@ -442,7 +525,7 @@
   }
   .plan-badge.plan1 { background: rgba(239,68,68,0.15); color: #f87171; }
   .plan-badge.plan2 { background: rgba(34,197,94,0.15); color: #4ade80; }
-  .plan-badge.plan3 { background: rgba(234,179,8,0.15); color: #facc15; }
+  .plan-badge.plan3 { background: rgba(245,159,11,0.15); color: var(--accent); }
 
   /* ── Search & Filter ── */
   .table-toolbar {
@@ -462,6 +545,7 @@
     color: var(--text);
     font-family: 'Tajawal', sans-serif;
     font-size: 14px;
+    transition: border-color 0.2s;
   }
   .search-box:focus { outline: none; border-color: var(--accent); }
   .search-box::placeholder { color: var(--muted); }
@@ -470,8 +554,8 @@
   .confirm-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
     display: none;
     align-items: center;
     justify-content: center;
@@ -482,21 +566,34 @@
   .confirm-box {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 32px;
+    border-radius: 18px;
+    padding: 36px 32px;
     max-width: 380px;
     width: 100%;
     text-align: center;
   }
-  .confirm-box .icon { font-size: 40px; margin-bottom: 12px; }
-  .confirm-box h3 { font-size: 18px; margin-bottom: 8px; }
+  .confirm-box .icon { font-size: 42px; margin-bottom: 14px; }
+  .confirm-box h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
   .confirm-box p { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
   .confirm-actions { display: flex; gap: 10px; justify-content: center; }
 
-  @media (max-width: 768px) {
+  /* ── Divider ── */
+  .stats-divider {
+    height: 1px;
+    background: var(--border);
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 1024px) {
     .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .stats-bar { padding: 16px; gap: 10px; }
     .topbar { padding: 0 16px; }
-    .tabs-container { padding: 0 16px; }
+    .tabs-container { padding: 0 16px 16px; }
+    .tabs { overflow-x: auto; gap: 0; }
+    .tab-btn { padding: 10px 14px; font-size: 13px; }
     thead { display: none; }
     tbody tr { display: block; padding: 12px 16px; }
     tbody td { display: block; padding: 4px 0; }
@@ -505,7 +602,8 @@
       font-size: 11px;
       color: var(--muted);
     }
-    .actions-cell { margin-top: 8px; }
+    .actions-cell { margin-top: 10px; }
+    .admin-label { display: none; }
   }
 </style>
 </head>
@@ -514,15 +612,19 @@
 <!-- ── شاشة الدخول ── -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="logo">Mr10x</div>
+    <div class="logo">
+      <div class="mark">M</div>
+      <div class="text">r10x<span>.</span></div>
+    </div>
     <h2>لوحة الإدارة</h2>
+    <div class="admin-hint">🔐 وصول مقيّد</div>
     <div class="form-group">
       <label>كلمة مرور الأدمن</label>
       <input type="password" id="admin-pass" placeholder="••••••••" dir="ltr"
         onkeydown="if(event.key==='Enter') adminLogin()">
     </div>
     <div id="login-err" class="error-msg"></div>
-    <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:8px" onclick="adminLogin()">
+    <button class="btn btn-primary" style="width:100%;padding:13px;margin-top:8px;font-size:16px" onclick="adminLogin()">
       دخول
     </button>
   </div>
@@ -531,9 +633,12 @@
 <!-- ── لوحة التحكم ── -->
 <div id="dashboard">
   <nav class="topbar">
-    <div style="display:flex;align-items:center;gap:12px">
-      <span class="topbar-logo">Mr10x</span>
-      <span class="topbar-badge" id="pending-topbar-badge" style="display:none">طلبات جديدة</span>
+    <div class="topbar-left">
+      <div class="logo-mark">
+        <div class="mark">M</div>
+        <div class="wordmark">r10x<span>.</span></div>
+      </div>
+      <span class="topbar-badge" id="pending-topbar-badge" style="display:none">🔔 طلبات جديدة</span>
     </div>
     <div class="topbar-actions">
       <span class="admin-label">🔐 لوحة الإدارة</span>
@@ -541,7 +646,7 @@
     </div>
   </nav>
 
-  <!-- إحصائيات -->
+  <!-- إحصائيات الحالة -->
   <div class="stats-bar">
     <div class="stat-card stat-pending">
       <div class="num" id="stat-pending">0</div>
@@ -561,22 +666,24 @@
     </div>
   </div>
 
+  <div class="stats-divider"></div>
+
   <!-- إحصائيات النظام -->
-  <div class="stats-bar" style="padding-top:0">
-    <div class="stat-card" style="border-color:rgba(99,102,241,0.3)">
+  <div class="stats-bar" style="padding-top:16px">
+    <div class="stat-card" style="border-color:rgba(99,102,241,0.25)">
       <div class="num" id="stat-mailboxes" style="color:#818cf8">0</div>
       <div class="lbl">📬 صناديق البريد</div>
     </div>
-    <div class="stat-card" style="border-color:rgba(14,165,233,0.3)">
+    <div class="stat-card" style="border-color:rgba(14,165,233,0.25)">
       <div class="num" id="stat-slots" style="color:#38bdf8">0</div>
       <div class="lbl">🔗 روابط الزبائن</div>
     </div>
-    <div class="stat-card" style="border-color:rgba(16,185,129,0.3)">
+    <div class="stat-card" style="border-color:rgba(16,185,129,0.25)">
       <div class="num" id="stat-codes" style="color:#34d399">0</div>
       <div class="lbl">📲 أكواد تم تسليمها</div>
     </div>
-    <div class="stat-card" style="border-color:rgba(245,158,11,0.3)">
-      <div class="num" id="stat-subs" style="color:#fbbf24">0</div>
+    <div class="stat-card" style="border-color:rgba(245,159,11,0.25)">
+      <div class="num" id="stat-subs" style="color:var(--accent)">0</div>
       <div class="lbl">🔑 اشتراكات فعّالة</div>
     </div>
   </div>
