@@ -1486,19 +1486,23 @@ async function loadMailboxes() {
 }
 
 async function connectGmail(mailboxId) {
-  const r = await apiFetch('/api/auth/gmail/start?mailbox_id=' + mailboxId);
-  if (!r.ok) {
-    if (r.status === 503) {
-      toast('خدمة Gmail غير مفعّلة — تواصل مع الدعم');
-    } else if (r.status === 403) {
-      toast('تحقق من صلاحية اشتراكك أولاً');
-    } else {
-      toast('فشل بدء ربط Gmail');
+  try {
+    const r = await apiFetch('/api/auth/gmail/start?mailbox_id=' + mailboxId);
+    if (!r.ok) {
+      if (r.status === 503) {
+        toast('خدمة Gmail غير مفعّلة — تواصل مع الدعم');
+      } else if (r.status === 403) {
+        toast('تحقق من صلاحية اشتراكك أولاً');
+      } else {
+        toast('فشل بدء ربط Gmail (' + r.status + ')');
+      }
+      return;
     }
-    return;
+    const data = await r.json();
+    if (data.url) window.location.href = data.url;
+  } catch (err) {
+    toast('خطأ في الاتصال بالخادم');
   }
-  const data = await r.json();
-  if (data.url) window.location.href = data.url;
 }
 
 async function disconnectGmail(mailboxId) {
@@ -1713,7 +1717,7 @@ if (TOKEN) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
-    const verifyBoxVisible = document.getElementById('verify-box')?.style.display !== 'none';
+    const _vb = document.getElementById('verify-box'); const verifyBoxVisible = _vb && _vb.style.display !== 'none';
     if (verifyBoxVisible) return;
     if (document.getElementById('auth-screen').style.display !== 'none') submitAuth();
   }
