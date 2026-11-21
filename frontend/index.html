@@ -1482,7 +1482,16 @@ async function loadMailboxes() {
 
 async function connectGmail(mailboxId) {
   const r = await apiFetch('/api/auth/gmail/start?mailbox_id=' + mailboxId);
-  if (!r.ok) { toast('فشل بدء ربط Gmail'); return; }
+  if (!r.ok) {
+    if (r.status === 503) {
+      toast('خدمة Gmail غير مفعّلة — تواصل مع الدعم');
+    } else if (r.status === 403) {
+      toast('تحقق من صلاحية اشتراكك أولاً');
+    } else {
+      toast('فشل بدء ربط Gmail');
+    }
+    return;
+  }
   const data = await r.json();
   if (data.url) window.location.href = data.url;
 }
