@@ -37,35 +37,18 @@
     direction: rtl;
   }
 
-  /* ── Logo Mark ── */
-  .logo-mark {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .logo-mark .mark {
-    width: 36px;
-    height: 36px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0e0e12;
-    flex-shrink: 0;
-  }
-  .logo-mark .wordmark {
-    font-size: 20px;
-    font-weight: 800;
+  /* ── Logo Type ── */
+  .logo-type {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: -1.5px;
     color: var(--text);
-    letter-spacing: -0.5px;
     line-height: 1;
   }
-  .logo-mark .wordmark span {
-    color: var(--accent);
-  }
+  .logo-type .lt-m  { font-weight: 900; font-size: 1em; color: var(--text); }
+  .logo-type .lt-r  { font-weight: 300; font-size: 0.72em; color: var(--muted); }
+  .logo-type .lt-10 { font-weight: 900; font-size: 1.05em; color: var(--accent); letter-spacing: -2px; }
+  .logo-type .lt-x  { font-weight: 700; font-size: 0.85em; color: var(--text); }
 
   /* ── Login Screen ── */
   #login-screen {
@@ -92,25 +75,9 @@
     gap: 10px;
     margin-bottom: 8px;
   }
-  .login-card .logo .mark {
-    width: 44px;
-    height: 44px;
-    background: var(--accent);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 800;
-    color: #0e0e12;
+  .login-card .logo .logo-type {
+    font-size: 30px;
   }
-  .login-card .logo .text {
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--text);
-    letter-spacing: -0.5px;
-  }
-  .login-card .logo .text span { color: var(--accent); }
   .login-card h2 {
     font-size: 15px;
     color: var(--muted);
@@ -613,8 +580,7 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="logo">
-      <div class="mark">M</div>
-      <div class="text">r10x<span>.</span></div>
+      <div class="logo-type"><span class="lt-m">M</span><span class="lt-r">r</span><span class="lt-10">10</span><span class="lt-x">x</span></div>
     </div>
     <h2>لوحة الإدارة</h2>
     <div class="admin-hint">🔐 وصول مقيّد</div>
@@ -634,10 +600,7 @@
 <div id="dashboard">
   <nav class="topbar">
     <div class="topbar-left">
-      <div class="logo-mark">
-        <div class="mark">M</div>
-        <div class="wordmark">r10x<span>.</span></div>
-      </div>
+      <div class="logo-type"><span class="lt-m">M</span><span class="lt-r">r</span><span class="lt-10">10</span><span class="lt-x">x</span></div>
       <span class="topbar-badge" id="pending-topbar-badge" style="display:none">🔔 طلبات جديدة</span>
     </div>
     <div class="topbar-actions">
