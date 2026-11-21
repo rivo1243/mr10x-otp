@@ -1404,12 +1404,17 @@ async function loadProfile() {
   if (!r.ok) return;
   const me = await r.json();
 
-  const days = me.subscription_days_left ?? 0;
+  const days = me.subscription_days_left; // null = غير محدود، 0 = منتهي
   const numEl = document.getElementById('days-num');
   const dotEl = document.getElementById('sub-dot');
   const planEl = document.getElementById('plan-badge');
 
-  if (days > 7) {
+  if (days === null || days === undefined) {
+    // اشتراك غير محدود
+    numEl.textContent = 'غير محدود';
+    numEl.className = '';
+    dotEl.className = 'sub-dot';
+  } else if (days > 7) {
     numEl.textContent = `${days} يوم متبقٍ`;
     numEl.className = '';
     dotEl.className = 'sub-dot';
