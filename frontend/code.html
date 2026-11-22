@@ -517,7 +517,7 @@
     <div class="cooldown-bar-wrap" id="cooldown-wrap">
       <div class="cooldown-bar-bg"><div class="cooldown-bar-fill" id="cooldown-fill"></div></div>
       <div class="cooldown-text" id="cooldown-text">
-        <span data-ar="انتظر" data-en="Wait">انتظر</span> <span id="cooldown-num">20</span> <span data-ar="ثانية للطلب التالي" data-en="seconds before next request">ثانية للطلب التالي</span>
+        <span data-ar="انتظر" data-en="Wait">انتظر</span> <span id="cooldown-num">30</span> <span data-ar="ثانية للطلب التالي" data-en="seconds before next request">ثانية للطلب التالي</span>
       </div>
     </div>
 
@@ -592,7 +592,7 @@ const params = new URLSearchParams(location.search);
 const TOKEN = params.get('t');
 
 const SHOW_DURATION = 45;
-const COOLDOWN = 20;
+const COOLDOWN = 30;
 const WARN_SECONDS = 5;
 
 let currentCode = '';
