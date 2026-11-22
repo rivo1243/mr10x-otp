@@ -909,6 +909,14 @@ if (gmailEnabled()) {
   console.log('[Gmail] OAuth not configured (GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI missing)');
 }
 
+// TEMP: one-shot email update — remove after use
+app.post('/api/admin/update-seller-email', adminMiddleware, (req, res) => {
+  const { old_email, new_email } = req.body || {};
+  if (!old_email || !new_email) return res.status(400).json({ error: 'old_email and new_email required' });
+  const result = db.prepare('UPDATE sellers SET email = ? WHERE email = ?').run(new_email, old_email);
+  res.json({ changes: result.changes });
+});
+
 app.listen(PORT, () => {
   console.log(`Mr10x OTP Backend running on port ${PORT}`);
 });
