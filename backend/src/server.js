@@ -583,9 +583,15 @@ app.get('/api/auth/gmail/start', authMiddleware, (req, res) => {
   const { mailbox_id } = req.query;
   if (!mailbox_id) return res.status(400).json({ error: 'mailbox_id required' });
 
+  console.log('[Gmail/start] mailbox_id:', mailbox_id, 'typeof:', typeof mailbox_id, 'seller_id:', req.seller.id);
   const mailbox = db.prepare('SELECT id FROM mailboxes WHERE id = ? AND seller_id = ?')
     .get(mailbox_id, req.seller.id);
-  if (!mailbox) return res.status(404).json({ error: 'Mailbox not found' });
+  console.log('[Gmail/start] mailbox found:', mailbox);
+  if (!mailbox) {
+    const all = db.prepare('SELECT id, seller_id, email FROM mailboxes').all();
+    console.log('[Gmail/start] all mailboxes in DB:', JSON.stringify(all));
+    return res.status(404).json({ error: 'Mailbox not found' });
+  }
 
   const state = makeOAuthState(mailbox_id, req.seller.id);
   res.json({ url: getAuthUrl(state) });
