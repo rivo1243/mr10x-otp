@@ -308,8 +308,8 @@ async function loadMailboxes() {
       ? `<span class="badge badge-green">Gmail متصل</span>`
       : `<span class="badge badge-muted">غير متصل</span>`;
     const connectBtn = isConnected
-      ? `<button class="btn-sm danger" onclick="disconnectGmail(${mb.id})">قطع الاتصال</button>`
-      : `<button class="btn-sm accent" onclick="connectGmail(${mb.id})">ربط Gmail</button>`;
+      ? `<button class="btn-sm danger" data-action="disconnect-gmail" data-id="${mb.id}">قطع الاتصال</button>`
+      : `<button class="btn-sm accent" data-action="connect-gmail" data-id="${mb.id}">ربط Gmail</button>`;
     return `
       <div class="card">
         <div class="card-row">
@@ -323,7 +323,7 @@ async function loadMailboxes() {
           <div class="card-actions">
             ${badge}
             ${connectBtn}
-            <button class="btn-sm danger" onclick="deleteMailbox(${mb.id})">حذف</button>
+            <button class="btn-sm danger" data-action="delete-mailbox" data-id="${mb.id}">حذف</button>
           </div>
         </div>
       </div>`;
@@ -351,7 +351,6 @@ async function connectGmail(mailboxId) {
 }
 
 async function disconnectGmail(mailboxId) {
-  if (!confirm('قطع اتصال Gmail لهذا الصندوق؟')) return;
   const r = await apiFetch('/api/mailboxes/' + mailboxId + '/gmail-disconnect', { method: 'POST' });
   if (r.ok) { toast('تم قطع الاتصال'); loadMailboxes(); }
   else toast('فشل قطع الاتصال');
@@ -379,7 +378,7 @@ async function loadSlots() {
   container.innerHTML = list.map(sl => {
     const slotUrl = sl.url || (window.location.origin + '/code.html?t=' + sl.token);
     const editBtn = `<button class="btn-sm" style="border-color:rgba(245,159,11,0.3);color:var(--accent);"
-      onclick="openEditSlot(${sl.id},'${escapeHtml(sl.account_email||'')}','')">تعديل</button>`;
+      data-action="edit-slot" data-id="${sl.id}" data-email="${escapeHtml(sl.account_email||'')}">تعديل</button>`;
     return `
       <div class="card">
         <div class="card-row">
@@ -392,13 +391,13 @@ async function loadSlots() {
           </div>
           <div class="card-actions">
             ${editBtn}
-            <button class="btn-sm" onclick="copyLink('${escapeHtml(slotUrl)}')">نسخ الرابط</button>
-            <button class="btn-sm danger" onclick="deleteSlot(${sl.id})">حذف</button>
+            <button class="btn-sm" data-action="copy-link" data-url="${escapeHtml(slotUrl)}">نسخ الرابط</button>
+            <button class="btn-sm danger" data-action="delete-slot" data-id="${sl.id}">حذف</button>
           </div>
         </div>
         <div class="webhook-row">
           <div class="webhook-url">${escapeHtml(slotUrl)}</div>
-          <button class="btn-sm" onclick="copyWebhook('${escapeHtml(slotUrl)}')">نسخ</button>
+          <button class="btn-sm" data-action="copy-webhook" data-url="${escapeHtml(slotUrl)}">نسخ</button>
         </div>
       </div>`;
   }).join('');
@@ -432,6 +431,33 @@ document.addEventListener('DOMContentLoaded', () => {
   if (params.get('gmail_error')) {
     toast('فشل ربط Gmail: ' + params.get('gmail_error'));
     window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  // ── Event delegation for mailbox buttons ──
+  const mailboxList = document.getElementById('mailboxes-list');
+  if (mailboxList) {
+    mailboxList.addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const { action, id } = btn.dataset;
+      if (action === 'connect-gmail')    connectGmail(Number(id));
+      if (action === 'disconnect-gmail') disconnectGmail(Number(id));
+      if (action === 'delete-mailbox')   deleteMailbox(Number(id));
+    });
+  }
+
+  // ── Event delegation for slot buttons ──
+  const slotsList = document.getElementById('slots-list');
+  if (slotsList) {
+    slotsList.addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const { action, id, url, email } = btn.dataset;
+      if (action === 'edit-slot')    openEditSlot(Number(id), email || '', '');
+      if (action === 'copy-link')    copyLink(url);
+      if (action === 'copy-webhook') copyWebhook(url);
+      if (action === 'delete-slot')  deleteSlot(Number(id));
+    });
   }
 });
 
@@ -543,7 +569,6 @@ async function saveSlotEdit() {
 }
 
 async function deleteSlot(id) {
-  if (!confirm('حذف هذا الرابط؟')) return;
   await apiFetch('/api/slots/' + id, { method: 'DELETE' });
   loadSlots();
 }
