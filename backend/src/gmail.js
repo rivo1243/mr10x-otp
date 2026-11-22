@@ -7,7 +7,7 @@
  *   → store tokens → redirect to dashboard
  *
  * Polling:
- *   every 60s, pollGmailMailboxes() loops over mailboxes with refresh_token,
+ *   every 60s, fetchGmailCodes(db) loops over mailboxes with refresh_token,
  *   refreshes access token if needed, queries Gmail for messages newer than last_sync,
  *   extracts OTP codes, stores in codes table.
  */
@@ -15,7 +15,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { extractCode } from './extract.js';
 import { randomUUID } from 'node:crypto';
-import { dbGet, dbAll, dbRun } from './db.js';
 
 // ── Env helpers ───────────────────────────────────────────────────────────────
 export function gmailEnabled() {
@@ -116,7 +115,7 @@ export async function getGmailAddress(accessToken) {
  * Updates DB if token was refreshed.
  * Returns null if unable to refresh.
  */
-export async function ensureFreshToken(mailbox) {
+export async function ensureFreshToken(db, mailbox) {
   const now = Math.floor(Date.now() / 1000);
   // If token is still valid for at least 5 more minutes, use it
   if (mailbox.gmail_access_token && mailbox.gmail_token_expiry > now + 300) {
@@ -127,15 +126,15 @@ export async function ensureFreshToken(mailbox) {
   try {
     const data = await refreshToken(mailbox.gmail_refresh_token);
     const expiry = now + (data.expires_in || 3600);
-    await dbRun(`
+    db.prepare(`
       UPDATE mailboxes SET gmail_access_token = ?, gmail_token_expiry = ?, last_error = NULL
       WHERE id = ?
-    `, [data.access_token, expiry, mailbox.id]);
+    `).run(data.access_token, expiry, mailbox.id);
     return data.access_token;
   } catch (err) {
     console.error(`[Gmail] token refresh failed for ${mailbox.email}:`, err.message);
-    await dbRun(`UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?`,
-      ['Gmail auth error — please reconnect', mailbox.id]);
+    db.prepare(`UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?`)
+      .run('Gmail auth error — please reconnect', mailbox.id);
     return null;
   }
 }
@@ -173,14 +172,14 @@ function b64urlDecode(str) {
 
 function extractBodyFromPayload(payload) {
   if (!payload) return '';
-  if (payload.body && payload.body.data) return b64urlDecode(payload.body.data);
+  if (payload.body?.data) return b64urlDecode(payload.body.data);
   if (payload.parts) {
     // prefer text/plain
     const plain = payload.parts.find(p => p.mimeType === 'text/plain');
-    if (plain && plain.body && plain.body.data) return b64urlDecode(plain.body.data);
+    if (plain?.body?.data) return b64urlDecode(plain.body.data);
     // fall back to text/html
     const html = payload.parts.find(p => p.mimeType === 'text/html');
-    if (html && html.body && html.body.data) return b64urlDecode(html.body.data);
+    if (html?.body?.data) return b64urlDecode(html.body.data);
     // recurse into nested multipart
     for (const part of payload.parts) {
       const nested = extractBodyFromPayload(part);
@@ -191,8 +190,8 @@ function extractBodyFromPayload(payload) {
 }
 
 function parseMessage(msg) {
-  const headers = (msg.payload && msg.payload.headers) || [];
-  const h = name => (headers.find(hdr => hdr.name.toLowerCase() === name.toLowerCase()) || {}).value || '';
+  const headers = msg.payload?.headers || [];
+  const h = name => (headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '');
   return {
     subject: h('Subject'),
     from:    h('From'),
@@ -206,16 +205,16 @@ function parseMessage(msg) {
  * Called by setInterval every 60s.
  * Loops all mailboxes with gmail_refresh_token, fetches new emails, extracts OTPs.
  */
-export async function pollGmailMailboxes() {
-  const mailboxes = await dbAll(`
+export async function pollGmailMailboxes(db) {
+  const mailboxes = db.prepare(`
     SELECT * FROM mailboxes WHERE gmail_refresh_token IS NOT NULL
-  `);
+  `).all();
 
   if (!mailboxes.length) return;
 
   for (const mailbox of mailboxes) {
     try {
-      const accessToken = await ensureFreshToken(mailbox);
+      const accessToken = await ensureFreshToken(db, mailbox);
       if (!accessToken) continue;
 
       // Fetch messages newer than last sync (or last 5 min if never synced)
@@ -225,16 +224,15 @@ export async function pollGmailMailboxes() {
       if (!msgIds.length) {
         // Even if no new messages, update last_sync to now
         const now = Math.floor(Date.now() / 1000);
-        await dbRun(`UPDATE mailboxes SET gmail_last_sync_ts = ?, status = 'active' WHERE id = ?`,
-          [now, mailbox.id]);
+        db.prepare(`UPDATE mailboxes SET gmail_last_sync_ts = ?, status = 'active' WHERE id = ?`)
+          .run(now, mailbox.id);
         continue;
       }
 
       let codesFound = 0;
       const now = Math.floor(Date.now() / 1000);
 
-      for (const msgIdObj of msgIds) {
-        const msgId = msgIdObj.id;
+      for (const { id: msgId } of msgIds) {
         try {
           const msg = await fetchMessage(accessToken, msgId);
           const { subject, from, body, internalDate } = parseMessage(msg);
@@ -246,26 +244,25 @@ export async function pollGmailMailboxes() {
           if (!code) continue;
 
           // Find slots linked to this mailbox
-          const slots = await dbAll('SELECT * FROM slots WHERE mailbox_id = ?', [mailbox.id]);
+          const slots = db.prepare('SELECT * FROM slots WHERE mailbox_id = ?').all(mailbox.id);
           for (const slot of slots) {
-            const exists = await dbGet(
-              'SELECT id FROM codes WHERE slot_id = ? AND code = ? AND received_at > ?',
-              [slot.id, code, now - 60]
-            );
+            const exists = db.prepare(
+              'SELECT id FROM codes WHERE slot_id = ? AND code = ? AND received_at > ?'
+            ).get(slot.id, code, now - 60);
             if (exists) continue;
 
-            await dbRun(`
+            db.prepare(`
               INSERT INTO codes (id, slot_id, code, email_from, email_subj, received_at, expires_at)
               VALUES (?, ?, ?, ?, ?, ?, ?)
-            `, [
+            `).run(
               randomUUID(),
               slot.id,
               code,
               from.toLowerCase().slice(0, 200),
               subject.slice(0, 200),
               now,
-              now + 10 * 60,
-            ]);
+              now + 10 * 60
+            );
             codesFound++;
           }
         } catch (msgErr) {
@@ -273,18 +270,18 @@ export async function pollGmailMailboxes() {
         }
       }
 
-      await dbRun(`
+      db.prepare(`
         UPDATE mailboxes
         SET gmail_last_sync_ts = ?, last_sync = ?, status = 'active', last_error = NULL
         WHERE id = ?
-      `, [now, now, mailbox.id]);
+      `).run(now, now, mailbox.id);
 
       if (codesFound) console.log(`[Gmail] 🔑 ${codesFound} أكواد جديدة ← ${mailbox.email}`);
 
     } catch (err) {
       console.error(`[Gmail] poll error for ${mailbox.email}:`, err.message);
-      await dbRun(`UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?`,
-        [err.message.slice(0, 200), mailbox.id]);
+      db.prepare(`UPDATE mailboxes SET last_error = ?, status = 'error' WHERE id = ?`)
+        .run(err.message.slice(0, 200), mailbox.id);
     }
   }
 }
