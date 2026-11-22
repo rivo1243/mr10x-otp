@@ -845,11 +845,14 @@ app.get('/api/slot/:token', (req, res) => {
   }
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
-  // F-05: account_password removed from unauthenticated response — credentials must not be
-  // exposed publicly (slot token is the only auth here, shared with the end-customer)
+  // N-08: account_password returned decrypted — slot token is the customer's auth credential
+  const rawPass = slot.account_password
+    ? (slot.account_password_encrypted ? decryptPassword(slot.account_password) : slot.account_password)
+    : '';
   res.json({
     label: slot.label,
     account_email: slot.account_email || '',
+    account_password: rawPass,
     attempts_left: Math.max(0, 2 - (slot.code_attempts || 0))
   });
 });
@@ -865,13 +868,17 @@ app.get('/api/code/:token', (req, res) => {
   const slot = db.prepare('SELECT * FROM slots WHERE token = ?').get(req.params.token);
   if (!slot) return res.status(404).json({ error: 'Invalid link' });
 
-  // F-05: account_password removed — not returned to unauthenticated callers
+  // N-08: decrypt account_password for the customer-facing response
+  const rawPass = slot.account_password
+    ? (slot.account_password_encrypted ? decryptPassword(slot.account_password) : slot.account_password)
+    : '';
   const attempts = slot.code_attempts || 0;
   if (attempts >= 2) {
     return res.json({
       status: 'exhausted',
       label: slot.label,
-      account_email: slot.account_email || ''
+      account_email: slot.account_email || '',
+      account_password: rawPass
     });
   }
 
@@ -881,7 +888,7 @@ app.get('/api/code/:token', (req, res) => {
     ORDER BY received_at DESC LIMIT 1`)
     .get(slot.id, Math.floor(Date.now() / 1000));
 
-  if (!code) return res.json({ status: 'waiting', label: slot.label });
+  if (!code) return res.json({ status: 'waiting', label: slot.label, account_email: slot.account_email || '', account_password: rawPass });
 
   db.prepare('UPDATE slots SET code_attempts = code_attempts + 1 WHERE id = ?').run(slot.id);
   db.prepare('UPDATE codes SET viewed = 1 WHERE slot_id = ? AND code = ?').run(slot.id, code.code);
@@ -892,7 +899,8 @@ app.get('/api/code/:token', (req, res) => {
     label: slot.label,
     expires_in: code.expires_at - Math.floor(Date.now() / 1000),
     attempts_left: Math.max(0, 2 - (attempts + 1)),
-    account_email: slot.account_email || ''
+    account_email: slot.account_email || '',
+    account_password: rawPass
   });
 });
 
