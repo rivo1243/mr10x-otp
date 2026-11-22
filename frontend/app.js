@@ -440,9 +440,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       const { action, id } = btn.dataset;
-      if (action === 'connect-gmail')    connectGmail(Number(id));
-      if (action === 'disconnect-gmail') disconnectGmail(Number(id));
-      if (action === 'delete-mailbox')   deleteMailbox(Number(id));
+      if (action === 'connect-gmail')    connectGmail(id);
+      if (action === 'disconnect-gmail') disconnectGmail(id);
+      if (action === 'delete-mailbox')   deleteMailbox(id);
     });
   }
 
@@ -453,10 +453,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       const { action, id, url, email } = btn.dataset;
-      if (action === 'edit-slot')    openEditSlot(Number(id), email || '', '');
+      if (action === 'edit-slot')    openEditSlot(id, email || '', '');
       if (action === 'copy-link')    copyLink(url);
       if (action === 'copy-webhook') copyWebhook(url);
-      if (action === 'delete-slot')  deleteSlot(Number(id));
+      if (action === 'delete-slot')  deleteSlot(id);
     });
   }
 });
