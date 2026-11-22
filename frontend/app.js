@@ -461,8 +461,12 @@ async function addMailbox() {
 }
 
 async function deleteMailbox(id) {
-  if (!confirm('حذف هذا الصندوق؟ سيتم حذف كل روابطه أيضاً')) return;
-  await apiFetch('/api/mailboxes/' + id, { method: 'DELETE' });
+  const r = await apiFetch('/api/mailboxes/' + id, { method: 'DELETE' });
+  if (r.ok) {
+    toast('تم حذف الصندوق ✓');
+  } else {
+    toast('فشل الحذف — حاول مرة أخرى');
+  }
   loadAll();
 }
 

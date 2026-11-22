@@ -703,7 +703,7 @@ body {
   background: rgba(0,0,0,0.6);
   backdrop-filter: blur(4px);
   z-index: 1000;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -713,6 +713,7 @@ body {
 }
 
 .modal-overlay.open {
+  display: flex;
   opacity: 1;
   pointer-events: all;
 }
