@@ -6,22 +6,22 @@
 <title>Mr10x — كود التحقق</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0e0e12;
-    --surface: #17171d;
-    --surface2: #1f1f28;
+    --bg: #060f1e;
+    --surface: #0c1a2e;
+    --surface2: #101e35;
     --border: rgba(255,255,255,0.07);
-    --border-hover: rgba(245,159,11,0.3);
-    --accent: #f59f0b;
-    --accent2: #fbbf24;
-    --text: #f4f3ef;
-    --muted: #8a8898;
-    --muted2: #a9a8b8;
+    --border-hover: rgba(255,255,255,0.18);
+    --accent: #ffffff;
+    --accent2: #dce8ff;
+    --text: #eef3ff;
+    --muted: #6b83a0;
+    --muted2: #8ea4c0;
     --success: #22c55e;
     --danger: #ef4444;
-    --yellow: #f59e0b;
+    --yellow: #facc15;
     --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -35,20 +35,6 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
-  }
-
-  /* ── Glow bg ── */
-  body::before {
-    content: '';
-    position: fixed;
-    top: -20%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 700px;
-    height: 500px;
-    background: radial-gradient(ellipse, rgba(245,159,11,0.07) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
   }
 
   .wrap {
@@ -73,7 +59,7 @@
     line-height: 1;
   }
   .logo-type .lt-m  { font-weight: 900; font-size: 1em; color: var(--text); }
-  .logo-type .lt-r  { font-weight: 300; font-size: 0.72em; color: var(--muted); }
+  .logo-type .lt-r  { font-weight: 400; font-size: 0.72em; color: var(--muted); }
   .logo-type .lt-10 { font-weight: 900; font-size: 1.05em; color: var(--accent); letter-spacing: -2px; }
   .logo-type .lt-x  { font-weight: 700; font-size: 0.85em; color: var(--text); }
 
@@ -83,15 +69,15 @@
     border: 1px solid var(--border);
     border-radius: 24px;
     padding: 32px 28px;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
   }
 
   .service-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(245,159,11,0.1);
-    border: 1px solid rgba(245,159,11,0.25);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
     border-radius: 20px;
     padding: 5px 14px;
     font-size: 12px;
@@ -140,11 +126,11 @@
     font-size: 11px;
     color: var(--muted);
     min-width: 70px;
-    font-weight: 600;
+    font-weight: 700;
   }
   .cred-value {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text);
     font-family: 'Courier New', monospace;
     flex: 1;
@@ -156,19 +142,19 @@
   }
   .cred-value.password { letter-spacing: 2px; }
   .btn-copy-cred {
-    background: rgba(245,159,11,0.1);
-    border: 1px solid rgba(245,159,11,0.25);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
     color: var(--accent2);
     border-radius: 8px;
     padding: 5px 10px;
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.15s, border-color 0.15s;
     white-space: nowrap;
     font-family: 'Tajawal', sans-serif;
   }
-  .btn-copy-cred:hover { background: rgba(245,159,11,0.2); border-color: rgba(245,159,11,0.4); }
+  .btn-copy-cred:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.22); }
   .btn-copy-cred.done { background: rgba(34,197,94,0.12); border-color: var(--success); color: var(--success); }
 
   .show-pass-btn {
@@ -178,7 +164,7 @@
     cursor: pointer;
     padding: 4px;
     font-size: 12px;
-    transition: color 0.2s;
+    transition: color 0.15s;
   }
   .show-pass-btn:hover { color: var(--text); }
 
@@ -188,15 +174,15 @@
     width: 100%;
     padding: 16px;
     background: var(--accent);
-    color: #000; border: none; border-radius: var(--radius);
+    color: #060f1e; border: none; border-radius: var(--radius);
     font-size: 16px; font-weight: 900; cursor: pointer;
-    transition: all 0.25s;
+    transition: opacity 0.2s, box-shadow 0.2s;
     font-family: 'Tajawal', sans-serif;
   }
-  .btn-get:hover:not(:disabled) { transform: translateY(-2px); background: var(--accent2); box-shadow: 0 8px 30px rgba(245,159,11,0.35); }
-  .btn-get:active:not(:disabled) { transform: translateY(0); }
-  .btn-get:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .btn-get.cooldown { background: var(--surface2); color: var(--muted); }
+  .btn-get:hover:not(:disabled) { opacity: 0.92; box-shadow: 0 6px 24px rgba(255,255,255,0.15); }
+  .btn-get:active:not(:disabled) { opacity: 0.85; }
+  .btn-get:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-get.cooldown { background: var(--surface2); color: var(--muted); box-shadow: none; }
 
   /* ── Countdown ── */
   .cooldown-bar-wrap {
@@ -212,7 +198,7 @@
   }
   .cooldown-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    background: rgba(255,255,255,0.5);
     border-radius: 3px;
     transition: width 1s linear;
   }
@@ -223,18 +209,17 @@
     text-align: center;
   }
 
-  /* ── Countdown overlay (5s warning) ── */
+  /* ── Countdown overlay ── */
   #overlay-countdown {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(10,10,15,0.85);
+    background: rgba(6,15,30,0.92);
     z-index: 100;
     align-items: center;
     justify-content: center;
     flex-direction: column;
     gap: 20px;
-    backdrop-filter: blur(4px);
   }
   #overlay-countdown.show { display: flex; }
   .overlay-ring {
@@ -251,7 +236,7 @@
   }
   .overlay-ring svg.progress-ring circle {
     fill: none;
-    stroke: var(--accent2);
+    stroke: var(--accent);
     stroke-width: 3;
     stroke-dasharray: 376.99;
     stroke-dashoffset: 376.99;
@@ -279,17 +264,17 @@
   #code-panel.show { display: block; }
 
   .code-card {
-    background: rgba(245,159,11,0.06);
-    border: 2px solid rgba(245,159,11,0.3);
+    background: rgba(255,255,255,0.04);
+    border: 2px solid rgba(255,255,255,0.14);
     border-radius: 18px;
     padding: 24px 20px;
     margin-bottom: 20px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: border-color 0.2s, background 0.2s;
     position: relative;
   }
-  .code-card:hover { border-color: var(--accent); background: rgba(245,159,11,0.1); transform: scale(1.015); }
-  .code-card:active { transform: scale(0.985); }
+  .code-card:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.07); }
+  .code-card:active { background: rgba(255,255,255,0.09); }
 
   .code-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 700; }
   .code-value {
@@ -297,7 +282,7 @@
     font-weight: 900;
     letter-spacing: 10px;
     font-family: 'Courier New', monospace;
-    color: var(--accent2);
+    color: var(--accent);
     display: block;
     line-height: 1;
   }
@@ -317,12 +302,12 @@
   }
   .code-timer-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    background: rgba(255,255,255,0.6);
     border-radius: 5px;
     transition: width 1s linear;
   }
   .code-timer-num {
-    font-size: 13px; font-weight: 800; min-width: 32px;
+    font-size: 13px; font-weight: 900; min-width: 32px;
     color: var(--accent2);
   }
   .code-timer-num.warn { color: var(--yellow); }
@@ -334,11 +319,11 @@
     padding: 13px;
     background: var(--success);
     color: #fff; border: none; border-radius: 12px;
-    font-size: 15px; font-weight: 800; cursor: pointer;
-    transition: all 0.2s;
+    font-size: 15px; font-weight: 900; cursor: pointer;
+    transition: opacity 0.2s;
     font-family: 'Tajawal', sans-serif;
   }
-  .btn-copy-code:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-copy-code:hover { opacity: 0.9; }
   .btn-copy-code.done { background: #16a34a; }
 
   /* ── No code ── */
@@ -358,8 +343,8 @@
   #state-exhausted { display: none; }
   #state-exhausted.show { display: block; }
   .exhausted-box {
-    background: rgba(245,159,11,0.07);
-    border: 1px solid rgba(245,159,11,0.25);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 0;
@@ -369,7 +354,7 @@
     font-size: 36px; margin-bottom: 10px;
   }
   .exhausted-title {
-    font-size: 17px; font-weight: 800; color: var(--accent);
+    font-size: 17px; font-weight: 900; color: var(--text);
     margin-bottom: 6px;
   }
   .exhausted-sub {
@@ -391,10 +376,10 @@
     font-weight: 700;
     cursor: pointer;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: opacity 0.2s;
     font-family: 'Tajawal', sans-serif;
   }
-  .btn-whatsapp:hover { background: #1db954; transform: scale(1.03); }
+  .btn-whatsapp:hover { opacity: 0.88; }
 
   /* ── Language toggle ── */
   .lang-toggle {
@@ -409,21 +394,21 @@
     font-size: 12px;
     font-weight: 700;
     color: var(--muted);
-    transition: all 0.2s;
+    transition: border-color 0.15s, color 0.15s;
     position: absolute;
     top: 0;
     left: 0;
     font-family: 'Tajawal', sans-serif;
   }
-  .lang-toggle:hover { border-color: var(--accent); color: var(--text); }
+  .lang-toggle:hover { border-color: rgba(255,255,255,0.22); color: var(--text); }
   .lang-toggle .lang-opt {
     padding: 3px 10px;
     border-radius: 14px;
-    transition: all 0.2s;
+    transition: background 0.15s, color 0.15s;
   }
   .lang-toggle .lang-opt.active {
     background: var(--accent);
-    color: #000;
+    color: #060f1e;
     font-weight: 900;
   }
 
@@ -443,7 +428,7 @@
     background: var(--success); color: #fff;
     padding: 12px 24px; border-radius: 12px;
     font-size: 15px; font-weight: 700;
-    opacity: 0; transition: all 0.3s;
+    opacity: 0; transition: transform 0.3s, opacity 0.3s;
     z-index: 999; white-space: nowrap;
     box-shadow: 0 8px 24px rgba(34,197,94,0.3);
     font-family: 'Tajawal', sans-serif;
@@ -456,12 +441,23 @@
     color: var(--muted);
   }
   .footer span {
-    color: var(--accent);
+    color: var(--accent2);
     font-weight: 700;
   }
 </style>
 </head>
 <body>
+
+<!-- Shared SVG symbols — rendered once, referenced everywhere -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="ico-wa" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </symbol>
+  <symbol id="ico-copy" viewBox="0 0 24 24">
+    <rect fill="none" stroke="currentColor" stroke-width="2" x="9" y="9" width="13" height="13" rx="2"/>
+    <path fill="none" stroke="currentColor" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </symbol>
+</svg>
 
 <!-- Overlay countdown (20s) -->
 <div id="overlay-countdown">
@@ -533,7 +529,7 @@
         <div class="code-label">كود التحقق</div>
         <span class="code-value" id="code-value">------</span>
         <div class="copy-hint">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <svg width="12" height="12"><use href="#ico-copy"/></svg>
           اضغط للنسخ
         </div>
       </div>
@@ -545,7 +541,7 @@
       </div>
 
       <button class="btn-copy-code" id="btn-copy-code" onclick="copyCurrentCode()">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <svg width="18" height="18"><use href="#ico-copy"/></svg>
         نسخ الكود
       </button>
     </div>
@@ -559,7 +555,7 @@
           لقد استخدمت محاولتيك لاستلام الكود. تواصل مع المتجر لتجديد الرابط.
         </div>
         <a id="wa-btn-exhausted" class="btn-whatsapp" href="#" target="_blank">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          <svg width="18" height="18"><use href="#ico-wa"/></svg>
           <span data-ar="تواصل مع الدعم" data-en="Contact Support">تواصل مع الدعم</span>
         </a>
       </div>
@@ -575,7 +571,7 @@
       <h2 style="font-size:18px;margin-bottom:8px;" data-ar="رابط غير صحيح" data-en="Invalid Link">رابط غير صحيح</h2>
       <p style="color:var(--muted);font-size:14px;" data-ar="هذا الرابط غير صالح. تواصل مع المتجر." data-en="This link is invalid. Contact the store.">هذا الرابط غير صالح. تواصل مع المتجر.</p>
       <a id="wa-btn-invalid" class="btn-whatsapp" style="margin-top:16px;" href="#" target="_blank">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <svg width="18" height="18"><use href="#ico-wa"/></svg>
         <span data-ar="تواصل مع الدعم" data-en="Contact Support">تواصل مع الدعم</span>
       </a>
     </div>
@@ -659,7 +655,7 @@ function applyLang() {
   if (timerLabel) timerLabel.textContent = isEn ? 'Expires in' : 'ينتهي خلال';
   const btnCopyCode = document.getElementById('btn-copy-code');
   if (btnCopyCode && !btnCopyCode.classList.contains('done')) {
-    btnCopyCode.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>${isEn ? ' Copy Code' : ' نسخ الكود'}`;
+    btnCopyCode.innerHTML = `<svg width="18" height="18"><use href="#ico-copy"/></svg>${isEn ? ' Copy Code' : ' نسخ الكود'}`;
   }
 
   // Footer
@@ -904,7 +900,7 @@ function copyCurrentCode() {
     btn.innerHTML = `✓ ${isEn ? 'Copied!' : 'تم النسخ!'}`;
     setTimeout(() => {
       btn.classList.remove('done');
-      btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> ${isEn ? 'Copy Code' : 'نسخ الكود'}`;
+      btn.innerHTML = `<svg width="18" height="18"><use href="#ico-copy"/></svg> ${isEn ? 'Copy Code' : 'نسخ الكود'}`;
     }, 2500);
   });
 }
