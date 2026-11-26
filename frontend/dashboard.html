@@ -349,6 +349,24 @@
       <div class="stat-card"><div class="stat-label">استُنفدت</div><div class="stat-value red" id="stat-exhausted">—</div></div>
     </div>
 
+    <!-- ══ SUBSCRIPTION RENEWAL ══ -->
+    <div id="renewal-banner" style="display:none; margin-bottom:20px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 22px; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div style="width:42px;height:42px;border-radius:50%;background:rgba(245,159,11,0.12);border:1.5px solid rgba(245,159,11,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="20" height="20" fill="none" stroke="#f59f0b" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div>
+          <div id="renewal-title" style="font-weight:700;font-size:14px;color:var(--text);">تجديد الاشتراك</div>
+          <div id="renewal-sub" style="font-size:13px;color:var(--muted);margin-top:2px;">—</div>
+        </div>
+      </div>
+      <a id="renewal-btn" href="https://wa.me/966500000000?text=أريد%20تجديد%20اشتراك%20Mr10x" target="_blank" rel="noopener"
+         style="display:inline-flex;align-items:center;gap:7px;background:var(--accent);color:#0e0e12;font-family:inherit;font-size:13px;font-weight:800;padding:10px 20px;border-radius:10px;text-decoration:none;white-space:nowrap;transition:background 0.2s;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.996 2C6.472 2 2 6.477 2 12.004c0 1.993.577 3.85 1.572 5.418L2 22l4.682-1.542A9.952 9.952 0 0 0 11.996 22C17.52 22 22 17.523 22 12.004 22 6.477 17.52 2 11.996 2z"/></svg>
+        جدد عبر واتساب
+      </a>
+    </div>
+
     <div class="sec-header">
       <div>
         <div class="sec-title">الروابط</div>
@@ -945,6 +963,43 @@ async function init() {
     if (r.status === 401) { logout(); return; }
     const me = await r.json();
     document.getElementById('seller-name-display').textContent = me.name || me.email || '';
+
+    // ── Subscription renewal banner ──
+    const banner  = document.getElementById('renewal-banner');
+    const title   = document.getElementById('renewal-title');
+    const sub     = document.getElementById('renewal-sub');
+    const btn     = document.getElementById('renewal-btn');
+    const days    = me.subscription_days_left;
+
+    if (days === null || days === undefined) {
+      // unlimited / no expiry — hide banner
+      banner.style.display = 'none';
+    } else if (days <= 0) {
+      // expired
+      banner.style.display = 'flex';
+      banner.style.borderColor = 'rgba(239,68,68,0.3)';
+      title.textContent = 'انتهى اشتراكك';
+      title.style.color = '#ef4444';
+      sub.textContent = 'جدد الآن لاستعادة الوصول الكامل';
+      btn.textContent = '🔄 جدد الاشتراك';
+    } else if (days <= 7) {
+      // expiring soon
+      banner.style.display = 'flex';
+      banner.style.borderColor = 'rgba(245,159,11,0.3)';
+      title.textContent = `ينتهي اشتراكك خلال ${days} ${days === 1 ? 'يوم' : 'أيام'}`;
+      sub.textContent = 'جدد قبل انتهاء الصلاحية حتى لا تنقطع الخدمة';
+    } else {
+      // healthy — show subtle info
+      banner.style.display = 'flex';
+      banner.style.borderColor = 'rgba(34,197,94,0.2)';
+      title.textContent = 'الاشتراك نشط';
+      title.style.color = '#22c55e';
+      sub.textContent = `متبقي ${days} ${days === 1 ? 'يوم' : 'يوم'}`;
+      btn.style.background = 'var(--card2)';
+      btn.style.color = 'var(--text)';
+      btn.style.border = '1px solid var(--border)';
+      btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.996 2C6.472 2 2 6.477 2 12.004c0 1.993.577 3.85 1.572 5.418L2 22l4.682-1.542A9.952 9.952 0 0 0 11.996 22C17.52 22 22 17.523 22 12.004 22 6.477 17.52 2 11.996 2z"/></svg> تجديد مبكر`;
+    }
   } catch(e) {}
 
   loadSlots();

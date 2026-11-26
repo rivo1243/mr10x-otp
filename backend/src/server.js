@@ -374,6 +374,83 @@ app.post('/api/verify-email', (req, res) => {
 
   db.prepare('UPDATE email_verifications SET used = 1 WHERE id = ?').run(verifyId);
 
+  // إرسال إيميل ترحيب بعد إنشاء الحساب
+  sendEmail({
+    to: record.email,
+    subject: 'مرحباً بك في Mr10x 🎉',
+    html: `
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head><meta charset="UTF-8"/></head>
+      <body style="margin:0;padding:0;background:#0e0e12;font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#f4f3ef;direction:rtl;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;margin:40px auto;">
+          <tr><td style="background:#17171d;border-radius:18px;border:1px solid rgba(255,255,255,0.07);overflow:hidden;">
+            <!-- Header -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="background:linear-gradient(135deg,#1f1f28,#17171d);padding:32px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.07);">
+                <div style="font-size:28px;font-weight:900;letter-spacing:-1px;">
+                  <span style="color:#f59f0b;">M</span><span style="color:#f59f0b;">r</span><span style="color:#f4f3ef;">10</span><span style="color:#f59f0b;">x</span>
+                </div>
+              </td></tr>
+              <!-- Body -->
+              <tr><td style="padding:36px 32px;">
+                <div style="font-size:22px;font-weight:800;margin-bottom:12px;">مرحباً، ${record.name} 👋</div>
+                <p style="color:#8a8898;line-height:1.7;margin:0 0 24px;">
+                  تم إنشاء حسابك في Mr10x بنجاح. سيتم مراجعة طلبك وتفعيل الاشتراك من قِبل الفريق خلال وقت قصير.
+                </p>
+
+                <!-- Info box -->
+                <table width="100%" cellpadding="0" cellspacing="0" style="background:#1f1f28;border-radius:12px;border:1px solid rgba(255,255,255,0.07);margin-bottom:28px;">
+                  <tr><td style="padding:20px 24px;">
+                    <div style="color:#8a8898;font-size:12px;font-weight:700;letter-spacing:1px;margin-bottom:12px;">تفاصيل الحساب</div>
+                    <div style="margin-bottom:8px;font-size:14px;"><span style="color:#8a8898;">الاسم: </span>${record.name}</div>
+                    <div style="margin-bottom:8px;font-size:14px;"><span style="color:#8a8898;">البريد: </span>${record.email}</div>
+                    <div style="font-size:14px;"><span style="color:#8a8898;">الحالة: </span><span style="color:#f59f0b;font-weight:700;">قيد المراجعة</span></div>
+                  </td></tr>
+                </table>
+
+                <!-- Steps -->
+                <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:#f4f3ef;">الخطوات التالية:</div>
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr><td style="padding:0 0 12px;">
+                    <div style="display:flex;gap:10px;">
+                      <span style="background:rgba(245,159,11,0.12);border:1.5px solid rgba(245,159,11,0.3);color:#f59f0b;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-left:10px;">١</span>
+                      <span style="color:#8a8898;font-size:14px;">انتظر تفعيل الحساب — سيتم ذلك خلال دقائق في أوقات الدوام</span>
+                    </div>
+                  </td></tr>
+                  <tr><td style="padding:0 0 12px;">
+                    <span style="background:rgba(245,159,11,0.12);border:1.5px solid rgba(245,159,11,0.3);color:#f59f0b;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-left:10px;">٢</span>
+                    <span style="color:#8a8898;font-size:14px;">ستصلك رسالة إشعار عند التفعيل</span>
+                  </td></tr>
+                  <tr><td>
+                    <span style="background:rgba(245,159,11,0.12);border:1.5px solid rgba(245,159,11,0.3);color:#f59f0b;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-left:10px;">٣</span>
+                    <span style="color:#8a8898;font-size:14px;">سجّل الدخول وابدأ استخدام لوحة التحكم</span>
+                  </td></tr>
+                </table>
+
+                <!-- CTA -->
+                <div style="text-align:center;margin-top:32px;">
+                  <a href="https://mr10x-otp-production.up.railway.app/index.html" style="display:inline-block;background:#f59f0b;color:#0e0e12;font-weight:800;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
+                    الذهاب لصفحة تسجيل الدخول
+                  </a>
+                </div>
+              </td></tr>
+              <!-- Footer -->
+              <tr><td style="padding:20px 32px;text-align:center;border-top:1px solid rgba(255,255,255,0.07);">
+                <p style="color:#8a8898;font-size:12px;margin:0;">
+                  بحاجة لمساعدة؟
+                  <a href="https://wa.me/966500000000" style="color:#f59f0b;text-decoration:none;font-weight:700;">تواصل معنا عبر واتساب</a>
+                </p>
+                <p style="color:#8a8898;font-size:11px;margin:8px 0 0;">© ${new Date().getFullYear()} Mr10x — جميع الحقوق محفوظة</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </body>
+      </html>
+    `
+  }).catch(err => console.error('Welcome email failed:', err));
+
   res.json({ pending: true });
 });
 
