@@ -84,19 +84,29 @@ db.exec(`
 `);
 
 // ── Migrations ────────────────────────────────────────────────────────────────
-try { db.exec(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`); } catch {}
-try { db.exec(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`); } catch {}
-try { db.exec(`ALTER TABLE sellers ADD COLUMN phone TEXT DEFAULT ''`); } catch {}
-try { db.exec(`ALTER TABLE sellers ADD COLUMN status TEXT DEFAULT 'pending'`); } catch {}
-try { db.exec(`ALTER TABLE slots ADD COLUMN code_attempts INTEGER DEFAULT 0`); } catch {}
-try { db.exec(`ALTER TABLE sellers ADD COLUMN subscription_expires_at INTEGER DEFAULT NULL`); } catch {}
+// B-05: migrations intentionally swallow "duplicate column" errors (idempotency),
+//        but log anything unexpected so real failures don't go unnoticed.
+function migrate(sql) {
+  try { db.exec(sql); } catch (e) {
+    if (!e.message.includes('duplicate column name') && !e.message.includes('already exists')) {
+      console.error('[DB MIGRATION ERROR]', sql.slice(0, 80), e.message);
+    }
+  }
+}
+
+migrate(`ALTER TABLE slots ADD COLUMN account_email TEXT DEFAULT ''`);
+migrate(`ALTER TABLE slots ADD COLUMN account_password TEXT DEFAULT ''`);
+migrate(`ALTER TABLE sellers ADD COLUMN phone TEXT DEFAULT ''`);
+migrate(`ALTER TABLE sellers ADD COLUMN status TEXT DEFAULT 'pending'`);
+migrate(`ALTER TABLE slots ADD COLUMN code_attempts INTEGER DEFAULT 0`);
+migrate(`ALTER TABLE sellers ADD COLUMN subscription_expires_at INTEGER DEFAULT NULL`);
 // plan_type: 'plan1' = 1 slot فقط | 'plan2' = غير محدود | 'plan3' = كل الميزات (غير محدود)
-try { db.exec(`ALTER TABLE sellers ADD COLUMN plan_type TEXT DEFAULT 'plan2'`); } catch {}
-try { db.exec(`ALTER TABLE email_verifications ADD COLUMN plan_type TEXT DEFAULT 'plan2'`); } catch {}
+migrate(`ALTER TABLE sellers ADD COLUMN plan_type TEXT DEFAULT 'plan2'`);
+migrate(`ALTER TABLE email_verifications ADD COLUMN plan_type TEXT DEFAULT 'plan2'`);
 
 // F-03: separate api_token column so the seller's UUID is not used as auth token
-try { db.exec(`ALTER TABLE sellers ADD COLUMN api_token TEXT`); } catch {}
-try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_api_token ON sellers(api_token)`); } catch {}
+migrate(`ALTER TABLE sellers ADD COLUMN api_token TEXT`);
+migrate(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_api_token ON sellers(api_token)`);
 
 // Populate api_token for existing sellers that have none
 const sellersWithoutToken = db.prepare("SELECT id FROM sellers WHERE api_token IS NULL").all();
@@ -106,21 +116,21 @@ for (const s of sellersWithoutToken) {
 }
 
 // F-05: per-user salt for password hashing
-try { db.exec(`ALTER TABLE sellers ADD COLUMN salt TEXT DEFAULT NULL`); } catch {}
+migrate(`ALTER TABLE sellers ADD COLUMN salt TEXT DEFAULT NULL`);
 
 // F-04: flag whether mailbox password is encrypted
-try { db.exec(`ALTER TABLE mailboxes ADD COLUMN password_encrypted INTEGER DEFAULT 0`); } catch {}
+migrate(`ALTER TABLE mailboxes ADD COLUMN password_encrypted INTEGER DEFAULT 0`);
 
 // N-01: flag whether slot account_password is encrypted
-try { db.exec(`ALTER TABLE slots ADD COLUMN account_password_encrypted INTEGER DEFAULT 0`); } catch {}
+migrate(`ALTER TABLE slots ADD COLUMN account_password_encrypted INTEGER DEFAULT 0`);
 
 // F-09: indexes for high-frequency lookups
-try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_slots_token ON slots(token)`); } catch {}
-try { db.exec(`CREATE INDEX IF NOT EXISTS idx_codes_slot_id ON codes(slot_id)`); } catch {}
+migrate(`CREATE UNIQUE INDEX IF NOT EXISTS idx_slots_token ON slots(token)`);
+migrate(`CREATE INDEX IF NOT EXISTS idx_codes_slot_id ON codes(slot_id)`);
 
 // Webhook forwarding — each mailbox gets a unique inbound token
-try { db.exec(`ALTER TABLE mailboxes ADD COLUMN webhook_token TEXT`); } catch {}
-try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_mailboxes_webhook_token ON mailboxes(webhook_token)`); } catch {}
+migrate(`ALTER TABLE mailboxes ADD COLUMN webhook_token TEXT`);
+migrate(`CREATE UNIQUE INDEX IF NOT EXISTS idx_mailboxes_webhook_token ON mailboxes(webhook_token)`);
 
 // Populate webhook_token for existing mailboxes that have none
 const mailboxesWithoutToken = db.prepare("SELECT id FROM mailboxes WHERE webhook_token IS NULL").all();

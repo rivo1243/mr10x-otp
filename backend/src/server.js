@@ -303,6 +303,8 @@ app.post('/api/register', async (req, res) => {
   if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   // N-07: enforce minimum password length consistently (matches /api/reset-password)
   if (password.length < 6) return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
+  // B-06: validate email format before hitting the DB
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid email format' });
   const existing = db.prepare('SELECT id FROM sellers WHERE email = ?').get(email.toLowerCase());
   if (existing) return res.status(409).json({ error: 'Email already registered' });
 
@@ -324,6 +326,9 @@ app.post('/api/register', async (req, res) => {
     await sendVerificationEmail(email, name, code);
   } catch (e) {
     console.error('[MAIL ERROR]', e.message);
+    // B-03: clean up the pending record and tell the client — a verifyId is useless without the email
+    db.prepare('DELETE FROM email_verifications WHERE id = ?').run(verifyId);
+    return res.status(500).json({ error: 'فشل إرسال بريد التحقق. يرجى المحاولة مرة أخرى.' });
   }
 
   res.json({ verify: true, verifyId });
@@ -624,7 +629,13 @@ app.delete('/api/admin/sellers/:id', adminMiddleware, (req, res) => {
 
 app.patch('/api/admin/sellers/:id/subscription', adminMiddleware, (req, res) => {
   const { expires_at } = req.body || {};
-  const ts = expires_at ? Math.floor(new Date(expires_at).getTime() / 1000) : null;
+  let ts = null;
+  if (expires_at) {
+    const parsed = new Date(expires_at).getTime();
+    // B-04: reject invalid/NaN dates instead of silently storing NULL
+    if (isNaN(parsed)) return res.status(400).json({ error: 'expires_at تاريخ غير صالح' });
+    ts = Math.floor(parsed / 1000);
+  }
   db.prepare('UPDATE sellers SET subscription_expires_at = ? WHERE id = ?').run(ts, req.params.id);
   res.json({ ok: true });
 });
@@ -777,6 +788,10 @@ app.delete('/api/mailboxes/:id', authMiddleware, (req, res) => {
 // Gmail / أي خدمة توجيه تُرسل الإيميل الوارد هنا كـ POST
 // محتوى الطلب: نص الإيميل (plain-text أو HTML) في body.text / body.html / raw body
 app.post('/api/inbound/:token', (req, res) => {
+  // B-01: rate-limit inbound webhook to prevent flooding — 60 requests per minute per token
+  if (!rateLimit(`inbound:${req.params.token}`, 60, 60_000)) {
+    return res.status(429).json({ error: 'Too many requests' });
+  }
   const mailbox = db.prepare('SELECT * FROM mailboxes WHERE webhook_token = ?').get(req.params.token);
   if (!mailbox) return res.status(404).json({ error: 'Invalid token' });
 
@@ -993,14 +1008,6 @@ if (gmailEnabled()) {
 } else {
   console.log('[Gmail] OAuth not configured (GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI missing)');
 }
-
-// TEMP: one-shot email update — remove after use
-app.post('/api/admin/update-seller-email', adminMiddleware, (req, res) => {
-  const { old_email, new_email } = req.body || {};
-  if (!old_email || !new_email) return res.status(400).json({ error: 'old_email and new_email required' });
-  const result = db.prepare('UPDATE sellers SET email = ? WHERE email = ?').run(new_email, old_email);
-  res.json({ changes: result.changes });
-});
 
 app.listen(PORT, () => {
   console.log(`Mr10x OTP Backend running on port ${PORT}`);
