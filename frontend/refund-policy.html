@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سياسة الاسترداد — Mr10x</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0e0e12;
+      --surface: #17171d;
+      --surface2: #1f1f28;
+      --accent: #f59f0b;
+      --accent-dim: rgba(245,159,11,0.12);
+      --green: #22c55e;
+      --green-dim: rgba(34,197,94,0.12);
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,0.12);
+      --text: #e8e6f0;
+      --text-muted: #8a8898;
+      --border: rgba(255,255,255,0.07);
+      --radius: 12px;
+    }
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      min-height: 100vh;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(14,14,18,0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+    .logo-type { font-weight: 700; font-size: 20px; letter-spacing: -0.5px; }
+    .lt-m { color: #c084fc; }
+    .lt-r { color: var(--text-muted); }
+    .lt-10 { color: var(--accent); }
+    .lt-x { color: var(--accent); }
+    nav a.back {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+    nav a.back:hover { color: var(--accent); }
+    .hero {
+      background: linear-gradient(135deg, var(--surface) 0%, var(--bg) 60%);
+      border-bottom: 1px solid var(--border);
+      padding: 64px 24px 48px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(245,159,11,0.25);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+    .hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 700; margin-bottom: 12px; }
+    .hero p { color: var(--text-muted); font-size: 15px; }
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 56px 24px 80px;
+    }
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 36px;
+      margin-bottom: 24px;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title .icon {
+      width: 32px; height: 32px;
+      background: var(--accent-dim);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    p { margin-bottom: 12px; font-size: 15px; color: var(--text); }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-right: 20px; margin-bottom: 12px; }
+    li { margin-bottom: 8px; font-size: 15px; color: var(--text); }
+    .highlight {
+      background: var(--accent-dim);
+      border-right: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .eligible { background: var(--green-dim); border-right-color: var(--green); border-right: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 10px 0; }
+    .not-eligible { background: var(--red-dim); border-right: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 10px 0; }
+    .eligible p, .not-eligible p { margin: 0; }
+    .cases-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .case-card {
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+    .case-card.yes { background: var(--green-dim); border-color: rgba(34,197,94,0.2); }
+    .case-card.no { background: var(--red-dim); border-color: rgba(239,68,68,0.2); }
+    .case-card .label { font-weight: 700; margin-bottom: 10px; font-size: 14px; }
+    .case-card.yes .label { color: var(--green); }
+    .case-card.no .label { color: var(--red); }
+    .case-card ul { padding-right: 16px; margin: 0; }
+    .case-card li { font-size: 14px; margin-bottom: 6px; }
+    .steps { counter-reset: steps; }
+    .step {
+      display: flex;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { border-bottom: none; padding-bottom: 0; }
+    .step-num {
+      counter-increment: steps;
+      width: 32px; height: 32px;
+      background: var(--accent);
+      color: #0e0e12;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .step-content strong { display: block; margin-bottom: 4px; font-size: 15px; }
+    .step-content p { font-size: 14px; color: var(--text-muted); margin: 0; }
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 32px 24px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .footer-links { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+    @media (max-width: 600px) {
+      .section { padding: 24px 20px; }
+      .cases-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo-type">
+    <span class="lt-m">M</span><span class="lt-r">r</span><span class="lt-10">10</span><span class="lt-x">x</span>
+  </div>
+  <a href="landing.html" class="back">
+    ← العودة للرئيسية
+  </a>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">القانونية</div>
+  <h1>سياسة الاسترداد والاسترجاع</h1>
+  <p>آخر تحديث: نوفمبر 2024</p>
+</div>
+
+<div class="container">
+
+  <div class="section">
+    <div class="section-title">
+      <div class="icon">📋</div>
+      نظرة عامة
+    </div>
+    <p>
+      في <strong>Mr10x</strong>، نسعى إلى ضمان رضا عملائنا الكامل. نحن نقدم خدمات OTP رقمية يتم تسليمها فور الدفع. تُحدِّد هذه السياسة الشروط التي يمكن بموجبها طلب استرداد المبلغ.
+    </p>
+    <div class="highlight">
+      نظراً لأن خدماتنا رقمية تُستهلك فور تقديمها، تخضع استردادات المبلغ لشروط ومعايير محددة موضحة أدناه.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      <div class="icon">✅</div>
+      حالات الاسترداد
+    </div>
+    <p>يتم قبول طلبات الاسترداد وفقاً للحالات التالية:</p>
+    <div class="cases-grid">
+      <div class="case-card yes">
+        <div class="label">✅ مؤهل للاسترداد</div>
+        <ul>
+          <li>خلل تقني من جانبنا يمنع الاستفادة من الخدمة</li>
+          <li>خدمة لم تُسلَّم رغم اكتمال الدفع</li>
+          <li>رصيد مدفوع لم يُستهلك نهائياً خلال 7 أيام</li>
+          <li>خطأ في مبلغ المعاملة (سحب مزدوج)</li>
+        </ul>
+      </div>
+      <div class="case-card no">
+        <div class="label">❌ غير مؤهل للاسترداد</div>
+        <ul>
+          <li>OTP تم تسليمه واستخدامه بنجاح</li>
+          <li>تغيير رأي المستخدم بعد استهلاك الخدمة</li>
+          <li>مشاكل لدى الطرف الثالث (الموقع المستهدف)</li>
+          <li>انتهاء صلاحية رمز OTP دون استخدامه</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      <div class="icon">⏱️</div>
+      الإطار الزمني للاسترداد
+    </div>
+    <ul>
+      <li><strong>مدة تقديم الطلب:</strong> يجب تقديم طلب الاسترداد خلال <strong>7 أيام</strong> من تاريخ الدفع.</li>
+      <li><strong>مدة المعالجة:</strong> يُعالَج الطلب خلال 3-5 أيام عمل.</li>
+      <li><strong>مدة الاسترداد الفعلي:</strong> قد يستغرق 5-10 أيام عمل حسب جهة الإصدار البنكي.</li>
+    </ul>
+    <div class="highlight">
+      الطلبات المقدمة بعد مرور 7 أيام من تاريخ الدفع لن تُقبل إلا في حالات استثنائية موثقة.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      <div class="icon">📝</div>
+      كيفية تقديم طلب الاسترداد
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <strong>تواصل معنا عبر واتساب</strong>
+          <p>أرسل رسالة إلى الرقم <strong dir="ltr">0580198626</strong> مع ذكر "طلب استرداد".</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <strong>قدم تفاصيل المعاملة</strong>
+          <p>أرفق رقم المعاملة، تاريخ الدفع، والمبلغ المدفوع.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <strong>اشرح سبب الطلب</strong>
+          <p>وضح المشكلة بشكل واضح مع إرفاق أي لقطات شاشة داعمة.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <strong>انتظر المراجعة والرد</strong>
+          <p>سيرد فريقنا خلال 24 ساعة عمل بقرار الطلب.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <strong>استلام الاسترداد</strong>
+          <p>عند الموافقة، يُعاد المبلغ لنفس وسيلة الدفع الأصلية خلال 5-10 أيام عمل.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      <div class="icon">💳</div>
+      طرق الاسترداد
+    </div>
+    <p>يتم الاسترداد بنفس وسيلة الدفع المستخدمة في الشراء الأصلي:</p>
+    <ul>
+      <li>بطاقة ائتمانية أو مدى: خلال 5-10 أيام عمل بنكي.</li>
+      <li>المحافظ الإلكترونية: خلال 2-5 أيام عمل.</li>
+    </ul>
+    <div class="highlight">
+      لا يمكن إجراء الاسترداد إلى وسيلة دفع مختلفة عن الأصلية لأسباب أمنية.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      <div class="icon">📞</div>
+      تواصل معنا
+    </div>
+    <p>لأي استفسار حول سياسة الاسترداد:</p>
+    <ul>
+      <li>واتساب: <strong dir="ltr">0580198626</strong></li>
+      <li>الموقع الإلكتروني: <a href="landing.html" style="color: var(--accent);">mr10x-otp-production.up.railway.app</a></li>
+    </ul>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-links">
+    <a href="privacy-policy.html">سياسة الخصوصية</a>
+    <a href="refund-policy.html">سياسة الاسترداد</a>
+    <a href="terms.html">الشروط والأحكام</a>
+    <a href="landing.html">الرئيسية</a>
+  </div>
+  <div>© 2024 Mr10x — جميع الحقوق محفوظة</div>
+</footer>
+
+</body>
+</html>
