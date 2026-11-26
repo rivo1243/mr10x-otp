@@ -180,6 +180,7 @@
       <li><strong>بيانات الاستخدام:</strong> سجلات الوصول إلى API ورموز OTP المُولَّدة.</li>
       <li><strong>بيانات الدفع:</strong> تُعالَج عبر موفري الدفع المعتمدين ولا نحتفظ ببيانات بطاقتك مباشرة.</li>
       <li><strong>البيانات التقنية:</strong> عنوان IP، نوع المتصفح، وأوقات الجلسات بهدف تعزيز الأمان.</li>
+      <li><strong>بيانات Google / Gmail (عند الاختيار):</strong> إذا ربطت حسابك بـ Google، نطلب صلاحية <code>gmail.readonly</code> لقراءة رسائل بريدك الإلكتروني بغرض واحد فقط: البحث التلقائي عن رموز OTP لتسليمها للمشترين في متجرك. لا نقرأ أي رسائل أخرى، ولا نخزّن محتوى أي رسالة على خوادمنا، ولا نشاركها مع أطراف ثالثة. الصلاحية للقراءة فقط ولا تتيح لنا إرسال رسائل أو حذفها. يمكنك سحب هذه الصلاحية في أي وقت من إعدادات حسابك على Google: <a href="https://myaccount.google.com/permissions" target="_blank" style="color:#f59f0b;">myaccount.google.com/permissions</a>.</li>
     </ul>
   </div>
 
@@ -192,6 +193,7 @@
       <li>تقديم خدمة OTP وإدارة حسابك.</li>
       <li>معالجة المدفوعات وإصدار الفواتير.</li>
       <li>إرسال إشعارات تقنية وتنبيهات الأمان.</li>
+      <li>استخدام صلاحية <code>gmail.readonly</code> <strong>حصرياً</strong> لاستخراج رموز OTP من بريد Google الخاص بك وإيصالها للمشترين تلقائياً — ولا يتجاوز استخدامنا لبيانات Google هذا الغرض الواحد إطلاقاً.</li>
       <li>تحليل الأداء وتحسين جودة الخدمة.</li>
       <li>الامتثال للمتطلبات القانونية والتنظيمية.</li>
     </ul>
@@ -238,6 +240,25 @@
     </ul>
     <div class="highlight">
       لممارسة أي من هذه الحقوق، تواصل معنا عبر واتساب: <strong dir="ltr">0580198626</strong>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      <div class="icon">🔗</div>
+      الربط بـ Google وصلاحية Gmail
+    </div>
+    <p>تتيح منصة MR10X للبائعين ربط حساباتهم بـ Google للاستفادة من استلام رموز OTP تلقائياً عبر البريد الإلكتروني. فيما يلي تفاصيل كاملة حول هذه الميزة:</p>
+    <ul>
+      <li><strong>الصلاحية المطلوبة:</strong> <code>gmail.readonly</code> — قراءة فقط، لا إرسال ولا حذف.</li>
+      <li><strong>الغرض الوحيد:</strong> البحث في الرسائل الواردة عن رموز OTP لتسليمها تلقائياً لمشتري منتجاتك الرقمية.</li>
+      <li><strong>ما لا نفعله:</strong> لا نقرأ رسائل غير ذات صلة، ولا نحتفظ بمحتوى أي رسالة على خوادمنا، ولا نحلل بريدك لأغراض أخرى، ولا نشارك بيانات Gmail مع أي طرف ثالث.</li>
+      <li><strong>التخزين:</strong> يُخزَّن رمز الوصول (access token) المشفَّر لأجل الوصول اللازم فقط، ولا يُخزَّن أي محتوى للرسائل.</li>
+      <li><strong>سحب الصلاحية:</strong> يمكنك في أي وقت إلغاء صلاحية الوصول من إعدادات حساب Google: <a href="https://myaccount.google.com/permissions" target="_blank" style="color:#f59f0b;">myaccount.google.com/permissions</a>. سيؤدي ذلك إلى وقف استلام رموز OTP تلقائياً.</li>
+      <li><strong>الاختيارية:</strong> هذه الميزة اختيارية بالكامل. يمكنك استخدام المنصة وإدارة رموز OTP يدوياً دون ربط حساب Google.</li>
+    </ul>
+    <div class="highlight">
+      استخدامنا لبيانات Google API يلتزم بـ <strong>Google API Services User Data Policy</strong>، بما فيها متطلبات الاستخدام المحدود (<a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" style="color:#f59f0b;">Limited Use requirements</a>).
     </div>
   </div>
 
